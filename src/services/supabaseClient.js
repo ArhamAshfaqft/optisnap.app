@@ -182,22 +182,44 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
-    // Fetch all codes and join with profiles to get the user email if available
-    const { data, error } = await supabase
+    // Fetch all codes directly
+    const { data: codes, error: codesError } = await supabase
       .from('license_codes')
-      .select(`
-        code,
-        is_used,
-        activated_at,
-        activated_by,
-        profiles (
-          email
-        )
-      `)
+      .select('code, is_used, activated_at, activated_by, created_at')
       .order('created_at', { ascending: false })
 
-    if (error) throw error
-    return data
+    if (codesError) throw codesError
+    if (!codes || codes.length === 0) return []
+
+    // Collect all unique user IDs that activated a code
+    const userIds = [...new Set(codes.map(c => c.activated_by).filter(Boolean))]
+
+    if (userIds.length === 0) {
+      return codes.map(c => ({
+        ...c,
+        profiles: null
+      }))
+    }
+
+    // Fetch profiles for these users to get their emails
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .in('id', userIds)
+
+    const profileMap = {}
+    if (profiles && !profilesError) {
+      profiles.forEach(p => {
+        profileMap[p.id] = p
+      })
+    } else if (profilesError) {
+      console.warn("Could not fetch profiles for admin view:", profilesError)
+    }
+
+    return codes.map(c => ({
+      ...c,
+      profiles: c.activated_by ? (profileMap[c.activated_by] || { email: 'Unknown User' }) : null
+    }))
   },
 
   async deleteLicenseCode(code) {

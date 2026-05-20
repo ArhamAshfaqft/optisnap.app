@@ -1001,7 +1001,8 @@ function App() {
       const data = await SupabaseService.getAdminLicenseCodes()
       setAdminCodes(data || [])
     } catch (e) {
-      console.warn("Failed to load codes, profiles/license_codes tables might not be set up yet:", e.message)
+      console.error("Failed to load codes:", e)
+      toast.error(`Database Error: ${e.message || "Failed to fetch license registry."}`)
     } finally {
       setAdminLoading(false)
     }
