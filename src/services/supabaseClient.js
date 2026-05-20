@@ -119,7 +119,7 @@ export const SupabaseService = {
 
     // Try updating user profile table
     try {
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
@@ -128,10 +128,11 @@ export const SupabaseService = {
           email: user.email,
           updated_at: new Date().toISOString()
         })
+      if (profileError) throw profileError
     } catch (e) {
       console.warn("Could not upsert profile with plan_tier, trying fallback:", e)
       try {
-        await supabase
+        const { error: fallbackError } = await supabase
           .from('profiles')
           .upsert({
             id: user.id,
@@ -139,6 +140,7 @@ export const SupabaseService = {
             email: user.email,
             updated_at: new Date().toISOString()
           })
+        if (fallbackError) throw fallbackError
       } catch (innerErr) {
         console.warn("Fallback upsert failed:", innerErr)
       }
