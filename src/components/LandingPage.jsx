@@ -20,7 +20,8 @@ import {
   ChevronUp,
   HelpCircle,
   ShoppingBag,
-  Star
+  Star,
+  EyeOff
 } from 'lucide-react'
 
 const ROW1_REVIEWS = [
@@ -145,6 +146,11 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       icon: <Lock size={22} className="text-pro" />,
       title: "100% Data Protection",
       desc: "Isolated sandbox execution means complete data privacy. Perfect for proprietary design catalogs."
+    },
+    {
+      icon: <EyeOff size={22} className="text-pro" />,
+      title: "EXIF Metadata Stripper",
+      desc: "Clean product images of camera details, GPS parameters, and personal identifier tags in bulk."
     }
   ]
 
@@ -164,6 +170,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         "Lossless compression & Convert",
         "Text and logo watermarking",
         "Keyword sequential renaming",
+        "EXIF Metadata Stripper (Privacy / SEO)",
         "Lifetime platform updates",
         "Standard support"
       ],

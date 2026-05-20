@@ -35,7 +35,8 @@ import {
   ShieldAlert,
   Key,
   Search,
-  RefreshCw
+  RefreshCw,
+  EyeOff
 } from 'lucide-react'
 import './assets/main.css'
 
@@ -186,6 +187,7 @@ function App() {
   const [renameSettings, setRenameSettings] = useState(() => loadSettings('optisnap_rename', { active: false, baseName: '', startSeq: 1 }))
   const [convertSettings, setConvertSettings] = useState(() => loadSettings('optisnap_convert', { active: true, format: 'jpg', quality: 90 }))
   const [compressSettings, setCompressSettings] = useState(() => loadSettings('optisnap_compress', { active: false, maxSizeMB: 1.0 }))
+  const [metadataSettings, setMetadataSettings] = useState(() => loadSettings('optisnap_metadata', { active: true, stripExif: true, stripGps: true, stripIptc: true }))
   const [backgroundRemovalActive, setBackgroundRemovalActive] = useState(() => loadSettings('optisnap_bg_removal', false))
   const [filenameSuffix, setFilenameSuffix] = useState(() => localStorage.getItem('optisnap_suffix') || '_processed')
   const [selectedPresetId, setSelectedPresetId] = useState(null)
@@ -272,8 +274,9 @@ function App() {
     localStorage.setItem('optisnap_rename', JSON.stringify(renameSettings))
     localStorage.setItem('optisnap_convert', JSON.stringify(convertSettings))
     localStorage.setItem('optisnap_compress', JSON.stringify(compressSettings))
+    localStorage.setItem('optisnap_metadata', JSON.stringify(metadataSettings))
     localStorage.setItem('optisnap_bg_removal', JSON.stringify(backgroundRemovalActive))
-  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, backgroundRemovalActive])
+  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive])
 
   // Clean up ObjectURLs when images are cleared/removed
   useEffect(() => {
@@ -627,6 +630,7 @@ function App() {
         convert: convertSettings,
         rename: renameSettings,
         compress: compressSettings,
+        metadata: metadataSettings,
         suffix: filenameSuffix,
         bgRemoval: backgroundRemovalActive
       }
@@ -639,6 +643,7 @@ function App() {
   const loadPreset = (preset) => {
     setResizeSettings(preset.settings.resize)
     setWatermarkSettings(preset.settings.watermark)
+    if (preset.settings.metadata) setMetadataSettings(preset.settings.metadata)
     
     // Safely load background removal active status
     const targetBgRemovalActive = preset.settings.bgRemoval !== undefined 
@@ -806,6 +811,7 @@ function App() {
       convert: { ...convertSettings, active: isDashboard ? convertSettings.active : (type === 'convert' || type === 'compress' || type === 'bg-removal') },
       rename: { ...renameSettings, active: type === 'rename' || (isDashboard && renameSettings.active) },
       compress: { ...compressSettings, active: isDashboard ? compressSettings.active : type === 'compress' },
+      metadata: { ...metadataSettings, active: isDashboard ? metadataSettings.active : type === 'metadata' },
       backgroundRemoval: { active: isDashboard ? backgroundRemovalActive : type === 'bg-removal' },
       suffix: filenameSuffix
     }
@@ -1624,6 +1630,69 @@ function App() {
                   }}></div>
                 </div>
               </div>
+
+              {/* EXIF Stripper Card */}
+              <div
+                onClick={() => setMetadataSettings({ ...metadataSettings, active: !metadataSettings.active })}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: metadataSettings.active ? 'var(--bg-card)' : 'transparent',
+                  border: metadataSettings.active ? '1px solid var(--primary)' : '1px solid transparent',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: metadataSettings.active ? 'var(--shadow-sm)' : 'none'
+                }}
+                className="master-control-item"
+              >
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', overflow: 'hidden' }}>
+                  <div style={{
+                    background: metadataSettings.active ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0,0,0,0.03)',
+                    color: metadataSettings.active ? 'var(--primary)' : 'var(--text-secondary)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <EyeOff size={16} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <h5 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>EXIF Stripper</h5>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {metadataSettings.active ? 'Clean GPS/EXIF' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+                {/* Custom Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  background: metadataSettings.active ? 'var(--primary)' : 'var(--border-color)',
+                  borderRadius: '10px',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                  marginLeft: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: metadataSettings.active ? '14px' : '2px',
+                    transition: 'left 0.2s'
+                  }}></div>
+                </div>
+              </div>
             </div>
 
             {images.length > 0 && backgroundRemovalActive && convertSettings.format === 'jpg' && (
@@ -2351,6 +2420,73 @@ function App() {
 
               <button className="btn-primary" onClick={() => handleProcess('convert')} disabled={isProcessing}>
                 Start Conversion Batch
+              </button>
+            </div>
+          </div>
+        )
+      case 'metadata':
+        return (
+          <div className="card">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>EXIF Metadata Stripper</h2>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={metadataSettings.active}
+                  onChange={e => setMetadataSettings({ ...metadataSettings, active: e.target.checked })}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+            <div style={{ opacity: metadataSettings.active ? 1 : 0.4, pointerEvents: metadataSettings.active ? 'auto' : 'none', transition: 'opacity 0.3s' }}>
+              <p className="helper-text" style={{ marginBottom: '20px' }}>
+                Ensure privacy and minimize image size by stripping embedded camera parameters, creator profiles, and geographic tracking tags in bulk.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                  <input
+                    type="checkbox"
+                    checked={metadataSettings.stripExif}
+                    onChange={e => setMetadataSettings({ ...metadataSettings, stripExif: e.target.checked })}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>Strip Camera & Lens parameters (EXIF)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                  <input
+                    type="checkbox"
+                    checked={metadataSettings.stripGps}
+                    onChange={e => setMetadataSettings({ ...metadataSettings, stripGps: e.target.checked })}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Strip GPS Location Coordinates <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>(Privacy Protection)</span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                  <input
+                    type="checkbox"
+                    checked={metadataSettings.stripIptc}
+                    onChange={e => setMetadataSettings({ ...metadataSettings, stripIptc: e.target.checked })}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>Strip Creator & Copyright profiles (IPTC/XMP)</span>
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--input-bg)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
+                <EyeOff size={24} style={{ color: 'var(--primary)' }} />
+                <div>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600 }}>Privacy & SEO Protection</h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Fully strips metadata locally in your sandbox before outputting. Your photos are compiled clean of tracking.
+                  </p>
+                </div>
+              </div>
+
+              <button className="btn-primary" onClick={() => handleProcess('metadata')} disabled={isProcessing}>
+                Start Metadata Stripping Batch
               </button>
             </div>
           </div>
@@ -3384,6 +3520,9 @@ function App() {
           </button>
           <button className={currentTab === 'convert' ? 'active' : ''} onClick={() => setCurrentTab('convert')}>
             <FileType size={18} /> Convert
+          </button>
+          <button className={currentTab === 'metadata' ? 'active' : ''} onClick={() => setCurrentTab('metadata')}>
+            <EyeOff size={18} /> EXIF Stripper
           </button>
           <div className="divider"></div>
           <button className={currentTab === 'settings' ? 'active' : ''} onClick={() => setCurrentTab('settings')}>
