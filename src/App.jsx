@@ -2873,10 +2873,16 @@ function App() {
                     </span>
                   </p>
                   
-                  {!isPro && (
+                  {planTier !== 'professional' && (
                     <div className="form-group" style={{ padding: '15px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border-color)', maxWidth: '500px' }}>
-                      <label style={{ fontWeight: 600 }}>Activate AppSumo Key</label>
-                      <p className="helper-text" style={{ marginBottom: '10px' }}>Paste your AppSumo license key below to unlock limitless processing.</p>
+                      <label style={{ fontWeight: 600 }}>
+                        {planTier === 'starter' ? 'Upgrade to Professional' : 'Activate AppSumo Key'}
+                      </label>
+                      <p className="helper-text" style={{ marginBottom: '10px' }}>
+                        {planTier === 'starter' 
+                          ? 'Enter a Professional tier license key below to unlock unlimited batch processing.' 
+                          : 'Paste your AppSumo license key below to unlock limitless processing.'}
+                      </p>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <input
                           type="text"
