@@ -70,7 +70,7 @@ export const SupabaseService = {
       throw new Error("Invalid code length. Please enter a valid AppSumo code.")
     }
 
-    // Try to fetch the code first to verify if it exists and check its tier
+    // 1. Fetch the code first to verify if it exists and check its tier
     const { data: codeCheck, error: checkError } = await supabase
       .from('license_codes')
       .select('*')
@@ -78,21 +78,25 @@ export const SupabaseService = {
       .maybeSingle()
 
     if (checkError) {
-      console.warn("Error fetching code:", checkError)
+      throw new Error("Error verifying license code: " + checkError.message)
     }
 
-    // Default to professional tier if not found or no tier column
-    const tier = codeCheck?.tier || 'professional'
+    if (!codeCheck) {
+      throw new Error("This code is invalid, already activated, or expired.")
+    }
 
-    if (codeCheck && codeCheck.is_used) {
+    const activatedTier = codeCheck.tier || 'professional'
+
+    // 2. If it's already used
+    if (codeCheck.is_used) {
       if (codeCheck.activated_by === user.id) {
-        return { success: true, tier }
+        return { success: true, tier: activatedTier }
       }
       throw new Error("This code has already been activated by another user.")
     }
 
-    // Update license_codes table where it matches code and is_used = false
-    const { data, error } = await supabase
+    // 3. Update license_codes table to mark as used (omit select() to prevent RLS read-blocking bugs)
+    const { error: updateError } = await supabase
       .from('license_codes')
       .update({
         is_used: true,
@@ -101,23 +105,12 @@ export const SupabaseService = {
       })
       .eq('code', cleanCode)
       .eq('is_used', false)
-      .select()
 
-    if (error) {
-      throw new Error(error.message)
+    if (updateError) {
+      throw new Error("Failed to activate code: " + updateError.message)
     }
 
-    if (!data || data.length === 0) {
-      // Fallback for sandbox or testing: check metadata
-      if (user.user_metadata?.is_pro) {
-        return { success: true, tier: user.user_metadata?.plan_tier || 'professional' }
-      }
-      throw new Error("This code is invalid, already activated, or expired.")
-    }
-
-    const activatedTier = data[0]?.tier || tier
-
-    // Try updating user profile table
+    // 4. Update user profile table
     try {
       const { error: profileError } = await supabase
         .from('profiles')
@@ -146,7 +139,7 @@ export const SupabaseService = {
       }
     }
 
-    // Update user metadata so the local session reflects it immediately
+    // 5. Update user metadata so the local session reflects it immediately
     await supabase.auth.updateUser({
       data: { 
         is_pro: true,
