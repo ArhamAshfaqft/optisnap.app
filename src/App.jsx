@@ -2868,7 +2868,9 @@ function App() {
                     {session.user.user_metadata?.display_name && <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginTop: '2px' }}>({session.user.email})</span>}
                   </p>
                   <p style={{ margin: '0 0 20px 0', fontSize: '14px' }}>
-                    Plan Status: <span className={isPro ? 'text-pro' : ''} style={{ fontWeight: 700 }}>{isPro ? '🚀 PRO Lifetime Deal Active' : 'FREE Basic Mode'}</span>
+                    Plan Status: <span className={isPro ? 'text-pro' : ''} style={{ fontWeight: 700 }}>
+                      {planTier === 'professional' ? '🚀 PRO Lifetime Deal Active' : planTier === 'starter' ? '⚡ STARTER Lifetime Deal Active' : 'FREE Basic Mode'}
+                    </span>
                   </p>
                   
                   {!isPro && (
@@ -3350,7 +3352,7 @@ function App() {
               letterSpacing: '0.05em',
               lineHeight: 1
             }}>
-              {isPro ? '★ Pro Lifetime' : 'Free Trial'}
+              {planTier === 'professional' ? '★ Pro Lifetime' : planTier === 'starter' ? '★ Starter Lifetime' : 'Free Trial'}
             </span>
           </div>
         </div>
