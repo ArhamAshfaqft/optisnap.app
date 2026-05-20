@@ -334,12 +334,16 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('license_codes')
       .delete()
       .eq('code', code)
+      .select()
 
     if (error) throw error
+    if (!data || data.length === 0) {
+      throw new Error("Unable to delete key. This is usually due to missing DELETE permissions in Row-Level Security (RLS) policies on your 'license_codes' table.")
+    }
     return true
   },
 
@@ -347,7 +351,7 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('license_codes')
       .update({
         is_used: false,
@@ -355,8 +359,12 @@ export const SupabaseService = {
         activated_at: null
       })
       .eq('code', code)
+      .select()
 
     if (error) throw error
+    if (!data || data.length === 0) {
+      throw new Error("Unable to revoke key. Please check your Supabase Row-Level Security (RLS) update policies.")
+    }
     return true
   }
 }
