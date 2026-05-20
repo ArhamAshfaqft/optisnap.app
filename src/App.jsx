@@ -1038,7 +1038,6 @@ function App() {
         setPlanTier(result.tier)
         toast.success(`AppSumo Lifetime Deal Activated! Features unlocked for ${result.tier} tier. 🚀`)
         setPromoCode('')
-        setShowUpgradeModal(false)
       }
     } catch (err) {
       toast.error(err.message || "Failed to activate code.")
