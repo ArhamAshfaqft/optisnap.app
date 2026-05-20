@@ -169,6 +169,8 @@ function App() {
   const [generatePrefix, setGeneratePrefix] = useState('OPTSNP-')
   const [adminSearchQuery, setAdminSearchQuery] = useState('')
   const [adminStatusFilter, setAdminStatusFilter] = useState('all') // 'all', 'used', 'unused'
+  const [selectedCodes, setSelectedCodes] = useState([])
+  const [justGeneratedCodes, setJustGeneratedCodes] = useState([])
 
   // Feature Settings
   const loadSettings = (key, defaultVal) => {
@@ -1017,7 +1019,10 @@ function App() {
 
     const toastId = toast.loading(`Generating ${generateCount} keys...`)
     try {
-      await SupabaseService.generateLicenseCodes(generateCount, generatePrefix)
+      const newCodes = await SupabaseService.generateLicenseCodes(generateCount, generatePrefix)
+      const newCodeStrings = (newCodes || []).map(c => c.code)
+      setJustGeneratedCodes(newCodeStrings)
+      setSelectedCodes(newCodeStrings) // Auto-select the newly generated batch!
       toast.success(`Successfully generated ${generateCount} license keys! 🚀`)
       loadAdminCodes()
     } catch (e) {
@@ -1028,20 +1033,58 @@ function App() {
     }
   }
 
-  // Download filtered keys as CSV
-  const handleDownloadCSV = () => {
-    if (adminCodes.length === 0) {
+  // Toggle single key selection
+  const handleToggleSelectKey = (code) => {
+    if (selectedCodes.includes(code)) {
+      setSelectedCodes(selectedCodes.filter(c => c !== code))
+    } else {
+      setSelectedCodes([...selectedCodes, code])
+    }
+  }
+
+  // Toggle select all visible keys under current filter
+  const handleToggleSelectAll = (filteredCodes) => {
+    const allFilteredCodes = filteredCodes.map(c => c.code)
+    const areAllSelected = allFilteredCodes.every(code => selectedCodes.includes(code))
+    
+    if (areAllSelected) {
+      // Unselect only the filtered ones
+      setSelectedCodes(selectedCodes.filter(code => !allFilteredCodes.includes(code)))
+    } else {
+      // Select all filtered ones (avoid duplicates)
+      setSelectedCodes([...new Set([...selectedCodes, ...allFilteredCodes])])
+    }
+  }
+
+  // Download keys as CSV (either selected keys, specific keys, or all filtered keys)
+  const handleDownloadCSV = (specificCodes = null) => {
+    const activeCodesList = Array.isArray(specificCodes) ? specificCodes : selectedCodes
+    const isExportingSelected = activeCodesList.length > 0
+
+    let targets = []
+    if (isExportingSelected) {
+      targets = adminCodes.filter(c => activeCodesList.includes(c.code))
+    } else {
+      // Fallback: Export all currently filtered keys if no selection
+      targets = adminCodes.filter(c => {
+        const matchesSearch = c.code.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
+          (c.profiles?.email && c.profiles.email.toLowerCase().includes(adminSearchQuery.toLowerCase()))
+        
+        const matchesFilter = adminStatusFilter === 'all' ||
+          (adminStatusFilter === 'used' && c.is_used) ||
+          (adminStatusFilter === 'unused' && !c.is_used)
+          
+        return matchesSearch && matchesFilter
+      })
+    }
+
+    if (targets.length === 0) {
       return toast.error("No license keys found to download.")
     }
 
-    const filtered = adminCodes.filter(c => 
-      c.code.toLowerCase().includes(adminSearchQuery.toLowerCase()) || 
-      (c.profiles?.email && c.profiles.email.toLowerCase().includes(adminSearchQuery.toLowerCase()))
-    )
-
     let csvContent = "data:text/csv;charset=utf-8," 
       + "License Code,Status,Activated At,User Email\n"
-      + filtered.map(c => {
+      + targets.map(c => {
           const status = c.is_used ? "Used" : "Unused"
           const date = c.activated_at ? new Date(c.activated_at).toLocaleString() : ""
           const email = c.profiles?.email || ""
@@ -1051,11 +1094,53 @@ function App() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
     link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `optisnap_appsumo_keys_${new Date().toISOString().split('T')[0]}.csv`)
+    
+    let filename = "optisnap_keys"
+    if (specificCodes === justGeneratedCodes) {
+      filename = `optisnap_new_batch_${generateCount}keys`
+    } else if (isExportingSelected) {
+      filename = `optisnap_selected_${activeCodesList.length}keys`
+    } else {
+      filename = `optisnap_filtered_${targets.length}keys`
+    }
+    
+    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    toast.success("License keys downloaded as CSV! 📄")
+    toast.success(`Exported ${targets.length} keys to CSV! 📄`)
+  }
+
+  // Delete all selected keys in a batch
+  const handleDeleteSelectedKeys = async () => {
+    if (selectedCodes.length === 0) return
+    
+    const activeSelectedCount = adminCodes.filter(c => selectedCodes.includes(c.code) && c.is_used).length
+    
+    let confirmMsg = `Are you sure you want to permanently delete the ${selectedCodes.length} selected license keys?`
+    if (activeSelectedCount > 0) {
+      confirmMsg += `\n\n⚠️ WARNING: ${activeSelectedCount} of the selected keys are ACTIVE and in use. Deleting them will immediately demote those users to Free status!`
+    }
+    
+    if (!window.confirm(confirmMsg)) return
+    
+    const toastId = toast.loading(`Deleting ${selectedCodes.length} selected keys...`)
+    try {
+      let successCount = 0
+      for (const code of selectedCodes) {
+        await SupabaseService.deleteLicenseCode(code)
+        successCount++
+      }
+      toast.success(`Successfully deleted ${successCount} license keys! 🗑️`)
+      setSelectedCodes([])
+      setJustGeneratedCodes([])
+      loadAdminCodes()
+    } catch (e) {
+      toast.error(e.message || "Failed to delete selected keys.")
+      console.error(e)
+    } finally {
+      toast.dismiss(toastId)
+    }
   }
 
   // Revoke an active license key and demote the user
@@ -2332,6 +2417,67 @@ function App() {
                   Generate & Save Keys
                 </button>
               </div>
+
+              {/* Just Generated Banner */}
+              {justGeneratedCodes.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  borderRadius: '10px',
+                  marginTop: '20px',
+                  fontSize: '13px',
+                  color: '#10b981',
+                  fontWeight: 500,
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '16px' }}>🎉</span> Successfully generated <b>{justGeneratedCodes.length}</b> new keys! They are highlighted and auto-selected below.
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button 
+                      onClick={() => handleDownloadCSV(justGeneratedCodes)} 
+                      className="btn-primary"
+                      style={{
+                        background: '#10b981',
+                        color: '#fff',
+                        borderColor: '#10b981',
+                        padding: '6px 14px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        height: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <Download size={14} /> Download CSV of This Batch
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setJustGeneratedCodes([])
+                        setSelectedCodes([])
+                      }} 
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        padding: '4px'
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* List & Search section */}
@@ -2373,11 +2519,101 @@ function App() {
                 </div>
               </div>
 
+              {/* Selection Summary Actions Bar */}
+              {selectedCodes.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  background: 'rgba(134, 77, 226, 0.06)',
+                  border: '1px solid rgba(134, 77, 226, 0.2)',
+                  borderRadius: '12px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                  color: 'var(--text-main)'
+                }}>
+                  <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: 'var(--primary)',
+                      display: 'inline-block'
+                    }}></span>
+                    {selectedCodes.length} license key{selectedCodes.length > 1 ? 's' : ''} selected
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button 
+                      onClick={() => handleDownloadCSV(selectedCodes)} 
+                      className="btn-primary" 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        height: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Download size={14} /> Download Selected CSV
+                    </button>
+                    <button 
+                      onClick={handleDeleteSelectedKeys} 
+                      className="btn-secondary" 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        background: 'rgba(255, 77, 77, 0.08)',
+                        color: '#ff4d4d',
+                        borderColor: 'rgba(255, 77, 77, 0.15)',
+                        height: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      Delete Selected
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setSelectedCodes([])
+                        setJustGeneratedCodes([])
+                      }} 
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        marginLeft: '8px'
+                      }}
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Table Container */}
               <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'var(--bg-card)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: 'var(--input-bg)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                      <th style={{ padding: '12px 16px', width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={filteredCodes.length > 0 && filteredCodes.every(c => selectedCodes.includes(c.code))}
+                          onChange={() => handleToggleSelectAll(filteredCodes)}
+                          style={{
+                            cursor: 'pointer',
+                            width: '15px',
+                            height: '15px',
+                            accentColor: 'var(--primary)',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>License Key</th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>Status</th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>Activated By</th>
@@ -2388,82 +2624,138 @@ function App() {
                   <tbody>
                     {adminLoading ? (
                       <tr>
-                        <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                           <Loader2 className="animate-spin" size={24} style={{ margin: '0 auto 8px auto' }} />
                           Loading registry database...
                         </td>
                       </tr>
                     ) : filteredCodes.length === 0 ? (
                       <tr>
-                        <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                           No matching license keys found.
                         </td>
                       </tr>
                     ) : (
-                      filteredCodes.map(c => (
-                        <tr key={c.code} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }} className="admin-table-row">
-                          <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace', fontSize: '13px', color: 'var(--text-main)' }}>{c.code}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '3px 8px',
-                              borderRadius: '20px',
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.02em',
-                              background: c.is_used ? 'rgba(134, 77, 226, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                              color: c.is_used ? 'var(--primary)' : '#10b981',
-                              border: c.is_used ? '1px solid rgba(134, 77, 226, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)'
+                      filteredCodes.map(c => {
+                        const isJustGenerated = justGeneratedCodes.includes(c.code);
+                        const isRowSelected = selectedCodes.includes(c.code);
+                        return (
+                          <tr 
+                            key={c.code} 
+                            style={{ 
+                              borderBottom: '1px solid var(--border-color)', 
+                              transition: 'background 0.2s',
+                              background: isJustGenerated 
+                                ? 'rgba(16, 185, 129, 0.04)' 
+                                : isRowSelected 
+                                  ? 'rgba(134, 77, 226, 0.02)' 
+                                  : 'transparent'
+                            }} 
+                            className="admin-table-row"
+                          >
+                            <td style={{ padding: '12px 16px', width: '40px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={isRowSelected}
+                                onChange={() => handleToggleSelectKey(c.code)}
+                                style={{
+                                  cursor: 'pointer',
+                                  width: '15px',
+                                  height: '15px',
+                                  accentColor: 'var(--primary)',
+                                  borderRadius: '4px'
+                                }}
+                              />
+                            </td>
+                            <td style={{ 
+                              padding: '12px 16px', 
+                              fontWeight: 700, 
+                              fontFamily: 'monospace', 
+                              fontSize: '13px', 
+                              color: 'var(--text-main)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
                             }}>
-                              {c.is_used ? 'Used' : 'Unused'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{c.profiles?.email || '-'}</td>
-                          <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
-                            {c.activated_at ? new Date(c.activated_at).toLocaleString() : '-'}
-                          </td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {c.is_used && (
+                              {c.code}
+                              {isJustGenerated && (
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '9px',
+                                  fontWeight: 800,
+                                  background: 'rgba(16, 185, 129, 0.15)',
+                                  color: '#10b981',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  New Batch
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: '20px',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.02em',
+                                background: c.is_used ? 'rgba(134, 77, 226, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                color: c.is_used ? 'var(--primary)' : '#10b981',
+                                border: c.is_used ? '1px solid rgba(134, 77, 226, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)'
+                              }}>
+                                {c.is_used ? 'Used' : 'Unused'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{c.profiles?.email || '-'}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                              {c.activated_at ? new Date(c.activated_at).toLocaleString() : '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              {c.is_used && (
+                                <button
+                                  onClick={() => handleRevokeKey(c.code)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    background: 'rgba(134, 77, 226, 0.08)',
+                                    color: 'var(--primary)',
+                                    border: '1px solid rgba(134, 77, 226, 0.15)',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    marginRight: '8px',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  title="Revoke key and set user to free status"
+                                >
+                                  Revoke
+                                </button>
+                              )}
                               <button
-                                onClick={() => handleRevokeKey(c.code)}
+                                onClick={() => handleDeleteKey(c.code, c.is_used)}
                                 style={{
                                   padding: '4px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
-                                  background: 'rgba(134, 77, 226, 0.08)',
-                                  color: 'var(--primary)',
-                                  border: '1px solid rgba(134, 77, 226, 0.15)',
+                                  background: 'rgba(255, 77, 77, 0.08)',
+                                  color: '#ff4d4d',
+                                  border: '1px solid rgba(255, 77, 77, 0.15)',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
-                                  marginRight: '8px',
                                   transition: 'all 0.2s'
                                 }}
-                                title="Revoke key and set user to free status"
+                                title="Delete key permanently"
                               >
-                                Revoke
+                                Delete
                               </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteKey(c.code, c.is_used)}
-                              style={{
-                                padding: '4px 10px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                background: 'rgba(255, 77, 77, 0.08)',
-                                color: '#ff4d4d',
-                                border: '1px solid rgba(255, 77, 77, 0.15)',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                              }}
-                              title="Delete key permanently"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
