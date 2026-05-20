@@ -89,41 +89,58 @@ export const SupabaseService = {
 
     // 2. If it's already used
     if (codeCheck.is_used) {
-      if (codeCheck.activated_by === user.id) {
-        return { success: true, tier: activatedTier }
+      if (codeCheck.activated_by !== user.id) {
+        throw new Error("This code has already been activated by another user.")
       }
-      throw new Error("This code has already been activated by another user.")
+      // If it is activated by the current user, we continue to run the profile and metadata updates
+      // to ensure their profile database status is correctly synchronized.
+    } else {
+      // 3. Update license_codes table to mark as used (omit select() to prevent RLS read-blocking bugs)
+      const { error: updateError } = await supabase
+        .from('license_codes')
+        .update({
+          is_used: true,
+          activated_by: user.id,
+          activated_at: new Date().toISOString()
+        })
+        .eq('code', cleanCode)
+        .eq('is_used', false)
+
+      if (updateError) {
+        throw new Error("Failed to activate code: " + updateError.message)
+      }
     }
 
-    // 3. Update license_codes table to mark as used (omit select() to prevent RLS read-blocking bugs)
-    const { error: updateError } = await supabase
-      .from('license_codes')
-      .update({
-        is_used: true,
-        activated_by: user.id,
-        activated_at: new Date().toISOString()
-      })
-      .eq('code', cleanCode)
-      .eq('is_used', false)
-
-    if (updateError) {
-      throw new Error("Failed to activate code: " + updateError.message)
-    }
-
-    // 4. Update user profile table
+    // 4. Update user profile table (try update first to satisfy RLS update permission, fallback to upsert)
     try {
-      const { error: profileError } = await supabase
+      const { data: updateData, error: profileError } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
+        .update({
           is_pro: true,
           plan_tier: activatedTier,
           email: user.email,
           updated_at: new Date().toISOString()
         })
+        .eq('id', user.id)
+        .select()
+      
       if (profileError) throw profileError
+
+      // If profile record does not exist yet, perform upsert
+      if (!updateData || updateData.length === 0) {
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            is_pro: true,
+            plan_tier: activatedTier,
+            email: user.email,
+            updated_at: new Date().toISOString()
+          })
+        if (upsertError) throw upsertError
+      }
     } catch (e) {
-      console.warn("Could not upsert profile with plan_tier, trying fallback:", e)
+      console.warn("Could not update profile with plan_tier, trying fallback:", e)
       try {
         const { error: fallbackError } = await supabase
           .from('profiles')
@@ -162,7 +179,9 @@ export const SupabaseService = {
         .eq('id', user.id)
         .single()
       
-      if (data && !error) {
+      if (error) throw error // Throw error to trigger fallback catch block
+      
+      if (data) {
         const dbPro = !!data.is_pro
         const metaPro = !!user.user_metadata?.is_pro
         if (dbPro !== metaPro) {
@@ -176,7 +195,7 @@ export const SupabaseService = {
         return dbPro
       }
     } catch (e) {
-      console.warn("Error checking pro database status:", e)
+      console.warn("Error checking pro database status, using fallback:", e)
     }
 
     // 2. Fallback to user metadata
@@ -199,7 +218,9 @@ export const SupabaseService = {
         .eq('id', user.id)
         .single()
       
-      if (data && !error) {
+      if (error) throw error // Throw error to trigger fallback catch block
+      
+      if (data) {
         const dbTier = data.plan_tier || (data.is_pro ? 'professional' : 'free')
         const metaTier = user.user_metadata?.plan_tier || (user.user_metadata?.is_pro ? 'professional' : 'free')
         if (dbTier !== metaTier) {
@@ -213,6 +234,7 @@ export const SupabaseService = {
         return dbTier
       }
     } catch (e) {
+      console.warn("Error checking profiles database status, trying fallback:", e)
       // Fallback in case Profiles table does not have 'plan_tier' column yet
       try {
         const { data, error } = await supabase
@@ -220,7 +242,10 @@ export const SupabaseService = {
           .select('is_pro')
           .eq('id', user.id)
           .single()
-        if (data && !error && data.is_pro) {
+        
+        if (error) throw error
+
+        if (data && data.is_pro) {
           return 'professional'
         }
       } catch (innerErr) {
