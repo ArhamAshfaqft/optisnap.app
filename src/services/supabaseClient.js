@@ -70,6 +70,27 @@ export const SupabaseService = {
       throw new Error("Invalid code length. Please enter a valid AppSumo code.")
     }
 
+    // Try to fetch the code first to verify if it exists and check its tier
+    const { data: codeCheck, error: checkError } = await supabase
+      .from('license_codes')
+      .select('*')
+      .eq('code', cleanCode)
+      .maybeSingle()
+
+    if (checkError) {
+      console.warn("Error fetching code:", checkError)
+    }
+
+    // Default to professional tier if not found or no tier column
+    const tier = codeCheck?.tier || 'professional'
+
+    if (codeCheck && codeCheck.is_used) {
+      if (codeCheck.activated_by === user.id) {
+        return { success: true, tier }
+      }
+      throw new Error("This code has already been activated by another user.")
+    }
+
     // Update license_codes table where it matches code and is_used = false
     const { data, error } = await supabase
       .from('license_codes')
@@ -89,10 +110,12 @@ export const SupabaseService = {
     if (!data || data.length === 0) {
       // Fallback for sandbox or testing: check metadata
       if (user.user_metadata?.is_pro) {
-        return { success: true }
+        return { success: true, tier: user.user_metadata?.plan_tier || 'professional' }
       }
       throw new Error("This code is invalid, already activated, or expired.")
     }
+
+    const activatedTier = data[0]?.tier || tier
 
     // Try updating user profile table
     try {
@@ -101,19 +124,35 @@ export const SupabaseService = {
         .upsert({
           id: user.id,
           is_pro: true,
+          plan_tier: activatedTier,
           email: user.email,
           updated_at: new Date().toISOString()
         })
     } catch (e) {
-      console.warn("Could not upsert profile:", e)
+      console.warn("Could not upsert profile with plan_tier, trying fallback:", e)
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            is_pro: true,
+            email: user.email,
+            updated_at: new Date().toISOString()
+          })
+      } catch (innerErr) {
+        console.warn("Fallback upsert failed:", innerErr)
+      }
     }
 
     // Update user metadata so the local session reflects it immediately
     await supabase.auth.updateUser({
-      data: { is_pro: true }
+      data: { 
+        is_pro: true,
+        plan_tier: activatedTier 
+      }
     })
 
-    return { success: true }
+    return { success: true, tier: activatedTier }
   },
 
   async checkProStatus() {
@@ -143,8 +182,51 @@ export const SupabaseService = {
     return false
   },
 
+  async getPlanTier() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return 'free'
+
+    // 1. Check user metadata first
+    if (user.user_metadata?.plan_tier) {
+      return user.user_metadata.plan_tier
+    }
+    if (user.user_metadata?.is_pro) {
+      return 'professional'
+    }
+
+    // 2. Query 'profiles' table
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_pro, plan_tier')
+        .eq('id', user.id)
+        .single()
+      
+      if (data && !error) {
+        if (data.plan_tier) return data.plan_tier
+        if (data.is_pro) return 'professional'
+      }
+    } catch (e) {
+      // Fallback in case Profiles table does not have 'plan_tier' column yet
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_pro')
+          .eq('id', user.id)
+          .single()
+        if (data && !error && data.is_pro) {
+          return 'professional'
+        }
+      } catch (innerErr) {
+        console.warn("Error checking profile database status:", innerErr)
+      }
+    }
+
+    return 'free'
+  },
+
   // 3. Admin Tools
-  async generateLicenseCodes(count, prefix) {
+  async generateLicenseCodes(count, prefix, tier = 'professional') {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
@@ -165,16 +247,29 @@ export const SupabaseService = {
         code,
         is_used: false,
         activated_by: null,
-        activated_at: null
+        activated_at: null,
+        tier: tier
       })
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('license_codes')
       .insert(codes)
       .select()
 
-    if (error) throw error
+    if (error) {
+      // Fallback if 'tier' column is not supported in the database
+      if (error.message && (error.message.includes('column') || error.message.includes('tier'))) {
+        const fallbackCodes = codes.map(({ tier, ...rest }) => rest)
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('license_codes')
+          .insert(fallbackCodes)
+          .select()
+        if (fallbackError) throw fallbackError
+        return fallbackData.map(c => ({ ...c, tier: 'professional' }))
+      }
+      throw error
+    }
     return data
   },
 
@@ -182,13 +277,26 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
-    // Fetch all codes directly
-    const { data: codes, error: codesError } = await supabase
+    // Fetch all codes directly (attempt with tier first)
+    let { data: codes, error: codesError } = await supabase
       .from('license_codes')
-      .select('code, is_used, activated_at, activated_by, created_at')
+      .select('code, is_used, activated_at, activated_by, created_at, tier')
       .order('created_at', { ascending: false })
 
-    if (codesError) throw codesError
+    if (codesError) {
+      // Fallback if tier column does not exist
+      if (codesError.message && (codesError.message.includes('column') || codesError.message.includes('tier'))) {
+        const { data: fallbackCodes, error: fallbackError } = await supabase
+          .from('license_codes')
+          .select('code, is_used, activated_at, activated_by, created_at')
+          .order('created_at', { ascending: false })
+        if (fallbackError) throw fallbackError
+        codes = fallbackCodes.map(c => ({ ...c, tier: 'professional' }))
+      } else {
+        throw codesError
+      }
+    }
+    
     if (!codes || codes.length === 0) return []
 
     // Collect all unique user IDs that activated a code

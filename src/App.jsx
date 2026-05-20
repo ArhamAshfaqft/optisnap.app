@@ -151,7 +151,8 @@ function App() {
 
   // License & Supabase Auth States
   const [session, setSession] = useState(null)
-  const [isPro, setIsPro] = useState(false)
+  const [planTier, setPlanTier] = useState('free') // 'free', 'starter', 'professional'
+  const isPro = planTier !== 'free'
   const [promoCode, setPromoCode] = useState('')
   const [authEmail, setAuthEmail] = useState('')
   const [authUsername, setAuthUsername] = useState('')
@@ -161,12 +162,14 @@ function App() {
   const [authMode, setAuthMode] = useState('login') // 'login', 'signup', 'forgot-password'
   const [resetPassword, setResetPassword] = useState('')
   const [confirmResetPassword, setConfirmResetPassword] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   // Admin Portal States
   const [adminCodes, setAdminCodes] = useState([])
   const [adminLoading, setAdminLoading] = useState(false)
   const [generateCount, setGenerateCount] = useState(50)
   const [generatePrefix, setGeneratePrefix] = useState('OPTSNP-')
+  const [generateTier, setGenerateTier] = useState('professional') // 'starter', 'professional'
   const [adminSearchQuery, setAdminSearchQuery] = useState('')
   const [adminStatusFilter, setAdminStatusFilter] = useState('all') // 'all', 'used', 'unused'
   const [selectedCodes, setSelectedCodes] = useState([])
@@ -186,6 +189,14 @@ function App() {
   const [backgroundRemovalActive, setBackgroundRemovalActive] = useState(() => loadSettings('optisnap_bg_removal', false))
   const [filenameSuffix, setFilenameSuffix] = useState(() => localStorage.getItem('optisnap_suffix') || '_processed')
   const [selectedPresetId, setSelectedPresetId] = useState(null)
+
+  const handleToggleBgRemoval = (targetValue) => {
+    if (planTier === 'starter') {
+      setShowUpgradeModal(true)
+      return
+    }
+    setBackgroundRemovalActive(targetValue)
+  }
 
   // Listen for Supabase Authentication status
   useEffect(() => {
@@ -210,7 +221,7 @@ function App() {
           })
         }
       }
-      else setIsPro(false)
+      else setPlanTier('free')
     })
 
     return () => subscription.unsubscribe()
@@ -218,8 +229,8 @@ function App() {
 
   const checkUserProStatus = async () => {
     try {
-      const pro = await SupabaseService.checkProStatus()
-      setIsPro(pro)
+      const tier = await SupabaseService.getPlanTier()
+      setPlanTier(tier)
     } catch (e) {
       console.error(e)
     }
@@ -427,11 +438,12 @@ function App() {
       return
     }
 
-    // Daily Free Limit Check on Loading Files
-    const dailyFreeLimit = 10
-    const isFreeTrial = !session || !isPro
+    // Tier-Aware Upload Capping and Checks
+    const isFreeTrial = planTier === 'free'
+    const isStarter = planTier === 'starter'
 
     if (isFreeTrial) {
+      const dailyFreeLimit = 10
       const todayStr = new Date().toDateString()
       const savedDate = localStorage.getItem('optisnap_free_date')
       const savedCount = localStorage.getItem('optisnap_free_count')
@@ -475,7 +487,7 @@ function App() {
                 Daily Limit Reached (10/10)
               </h4>
               <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                You have processed <b>10 free images today</b>. Upgrade to Pro in Settings to process more files!
+                You have processed <b>10 free images today</b>. Activate a Lifetime Deal key in Settings to process more files!
               </p>
             </div>
             <button
@@ -519,7 +531,54 @@ function App() {
                 Upload Limit Exceeded
               </h4>
               <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                You have <b>{remainingAllowance} free image(s) left</b> for today, but tried to load {totalNewCount}. Upgrade to Pro for unlimited files!
+                You have <b>{remainingAllowance} free image(s) left</b> for today, but tried to load {totalNewCount}. Activate a Lifetime Deal key in Settings for unlimited files!
+              </p>
+            </div>
+            <button
+              onClick={() => toast.dismiss(t)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', alignSelf: 'flex-start', fontSize: '18px', lineHeight: 1 }}
+            >
+              ×
+            </button>
+          </div>
+        ), { duration: 8000 })
+        return
+      }
+    } else if (isStarter) {
+      const currentLoadedCount = images.length
+      const totalNewCount = currentLoadedCount + fileArray.length
+
+      if (totalNewCount > 50) {
+        toast.custom((t) => (
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--primary)',
+            padding: '16px',
+            borderRadius: '12px',
+            boxShadow: 'var(--shadow-md)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '15px',
+            minWidth: '360px'
+          }}>
+            <div style={{
+              background: 'rgba(139, 92, 246, 0.1)',
+              color: 'var(--primary)',
+              padding: '10px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Sparkles size={24} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>
+                Starter Tier Batch Limit (50)
+              </h4>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                The Starter Tier is capped at <b>50 images per batch run</b>. You have {currentLoadedCount} loaded and tried to load {fileArray.length}. Upgrade to Professional in Settings for unlimited batch sizes!
               </p>
             </div>
             <button
@@ -590,7 +649,7 @@ function App() {
       ? preset.settings.bgRemoval 
       : (preset.settings.backgroundRemoval ? preset.settings.backgroundRemoval.active : false)
     
-    setBackgroundRemovalActive(targetBgRemovalActive)
+    handleToggleBgRemoval(targetBgRemovalActive)
 
     // Load compression suffix
     if (preset.settings.compress) setCompressSettings(preset.settings.compress)
@@ -621,14 +680,15 @@ function App() {
       return
     }
 
-    // Frictionless Free Trial Daily Gating
-    const dailyFreeLimit = 10
-    const isFreeTrial = !session || !isPro
+    // Tier-Aware Limits Check
+    const isFreeTrial = planTier === 'free'
+    const isStarter = planTier === 'starter'
 
     let processedToday = 0
     const todayStr = new Date().toDateString()
 
     if (isFreeTrial) {
+      const dailyFreeLimit = 10
       const savedDate = localStorage.getItem('optisnap_free_date')
       const savedCount = localStorage.getItem('optisnap_free_count')
       
@@ -672,7 +732,7 @@ function App() {
                 Daily Limit Reached (10/10)
               </h4>
               <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                You have processed <b>10 free images today</b>. Upgrade to Pro in Settings to process unlimited files!
+                You have processed <b>10 free images today</b>. Activate a Lifetime Deal key in Settings to process unlimited files!
               </p>
             </div>
             <button
@@ -718,7 +778,7 @@ function App() {
                 Limit Exceeded
               </h4>
               <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                You have <b>{remainingAllowance} free image(s) left</b> for today, but tried to process {images.length}. Upgrade to Pro for unlimited files!
+                You have <b>{remainingAllowance} free image(s) left</b> for today, but tried to process {images.length}. Activate a Lifetime Deal key in Settings for unlimited files!
               </p>
             </div>
             <button
@@ -731,6 +791,11 @@ function App() {
         ), { duration: 8000 })
 
         setCurrentTab('settings')
+        return
+      }
+    } else if (isStarter) {
+      if (images.length > 50) {
+        toast.error("Starter Tier is capped at 50 images per batch run. Please remove some images or upgrade in settings.")
         return
       }
     }
@@ -974,9 +1039,10 @@ function App() {
     try {
       const result = await SupabaseService.activateLicenseCode(promoCode)
       if (result.success) {
-        setIsPro(true)
-        toast.success("AppSumo Lifetime Deal Activated! Pro features unlocked. 🚀")
+        setPlanTier(result.tier)
+        toast.success(`AppSumo Lifetime Deal Activated! Features unlocked for ${result.tier} tier. 🚀`)
         setPromoCode('')
+        setShowUpgradeModal(false)
       }
     } catch (err) {
       toast.error(err.message || "Failed to activate code.")
@@ -989,7 +1055,7 @@ function App() {
     try {
       await SupabaseService.signOut()
       setSession(null)
-      setIsPro(false)
+      setPlanTier('free')
       toast.info("Signed out successfully.")
     } catch (e) {
       toast.error("Signout error")
@@ -1019,7 +1085,7 @@ function App() {
 
     const toastId = toast.loading(`Generating ${generateCount} keys...`)
     try {
-      const newCodes = await SupabaseService.generateLicenseCodes(generateCount, generatePrefix)
+      const newCodes = await SupabaseService.generateLicenseCodes(generateCount, generatePrefix, generateTier)
       const newCodeStrings = (newCodes || []).map(c => c.code)
       setJustGeneratedCodes(newCodeStrings)
       setSelectedCodes(newCodeStrings) // Auto-select the newly generated batch!
@@ -1314,7 +1380,7 @@ function App() {
 
               {/* AI Background Removal Card */}
               <div
-                onClick={() => setBackgroundRemovalActive(!backgroundRemovalActive)}
+                onClick={() => handleToggleBgRemoval(!backgroundRemovalActive)}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1937,7 +2003,7 @@ function App() {
                 <input
                   type="checkbox"
                   checked={backgroundRemovalActive}
-                  onChange={e => setBackgroundRemovalActive(e.target.checked)}
+                  onChange={e => handleToggleBgRemoval(e.target.checked)}
                 />
                 <span className="slider round"></span>
               </label>
@@ -2413,6 +2479,18 @@ function App() {
                   />
                 </div>
 
+                <div style={{ width: '160px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>License Tier</label>
+                  <select
+                    value={generateTier}
+                    onChange={e => setGenerateTier(e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  >
+                    <option value="starter">Starter ($49)</option>
+                    <option value="professional">Professional ($99)</option>
+                  </select>
+                </div>
+
                 <button className="btn-primary" onClick={handleGenerateCodes} style={{ height: '42px', padding: '0 24px' }}>
                   Generate & Save Keys
                 </button>
@@ -2615,6 +2693,7 @@ function App() {
                         />
                       </th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>License Key</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>Tier</th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>Status</th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>Activated By</th>
                       <th style={{ padding: '12px 16px', fontWeight: 600 }}>Activation Date</th>
@@ -2624,14 +2703,14 @@ function App() {
                   <tbody>
                     {adminLoading ? (
                       <tr>
-                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                           <Loader2 className="animate-spin" size={24} style={{ margin: '0 auto 8px auto' }} />
                           Loading registry database...
                         </td>
                       </tr>
                     ) : filteredCodes.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                        <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                           No matching license keys found.
                         </td>
                       </tr>
@@ -2693,6 +2772,22 @@ function App() {
                                   New Batch
                                 </span>
                               )}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '3px 8px',
+                                borderRadius: '20px',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.02em',
+                                background: c.tier === 'starter' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                                color: c.tier === 'starter' ? '#3b82f6' : 'var(--primary)',
+                                border: c.tier === 'starter' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)'
+                              }}>
+                                {c.tier || 'professional'}
+                              </span>
                             </td>
                             <td style={{ padding: '12px 16px' }}>
                               <span style={{
@@ -3130,7 +3225,7 @@ function App() {
                     id: 'sandbox-mock-id-12345'
                   }
                 })
-                setIsPro(true)
+                setPlanTier('professional')
                 toast.success("Sandbox mode active! All Pro features unlocked. 🚀")
                 setView('app')
                 setCurrentTab('dashboard')
@@ -3259,6 +3354,51 @@ function App() {
   return (
     <div className="app-container">
       <Toaster position="top-center" richColors theme={theme} />
+
+      {showUpgradeModal && (
+        <div className="progress-overlay" style={{ zIndex: 1000, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <div className="modal" style={{ background: 'var(--bg-card)', padding: '30px', borderRadius: '16px', boxShadow: 'var(--shadow-lg)', maxWidth: '450px', width: '90%', position: 'relative', border: '1px solid var(--border-color)' }}>
+            <button 
+              onClick={() => setShowUpgradeModal(false)}
+              style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+            >
+              ×
+            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--primary)', padding: '15px', borderRadius: '50%', marginBottom: '20px' }}>
+                <Sparkles size={32} />
+              </div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)', fontSize: '22px' }}>Professional Feature</h3>
+              <p style={{ margin: '0 0 25px 0', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
+                AI Background Removal is a Professional-tier feature. It uses local machine learning to securely isolate subjects without uploading your images to any server.
+              </p>
+              
+              <div style={{ width: '100%', background: 'var(--bg-main)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-main)' }}>Have a Lifetime Deal code?</h4>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="text" 
+                    value={promoCode} 
+                    onChange={e => setPromoCode(e.target.value)} 
+                    placeholder="Enter AppSumo Code" 
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-main)', outline: 'none' }}
+                  />
+                  <button 
+                    onClick={handleActivateLicense}
+                    className="btn-primary"
+                    style={{ padding: '10px 20px', borderRadius: '8px' }}
+                  >
+                    Activate
+                  </button>
+                </div>
+                <p style={{ margin: '15px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Don't have one? <a href="#" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 'bold' }}>Get it on AppSumo</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isProcessing && (
         <div className="progress-overlay">
