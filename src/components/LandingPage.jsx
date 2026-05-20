@@ -157,6 +157,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       features: [
         "Up to 50 images per batch run",
         "Unlimited daily batches",
+        "Premium AI Background Removal (Local ML)",
         "No Forced Watermarks",
         "E-commerce presets (Etsy, Shopify, Amazon)",
         "Blurred padding options",
@@ -176,8 +177,8 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       desc: "Best for high-volume stores, power users, and agencies.",
       features: [
         "Unlimited batch sizes",
-        "Premium AI Background Removal (Local ML)",
         "Unlimited daily batches",
+        "Premium AI Background Removal (Local ML)",
         "No Forced Watermarks",
         "All Starter features included",
         "Priority customer support",

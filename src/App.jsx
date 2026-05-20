@@ -162,7 +162,7 @@ function App() {
   const [authMode, setAuthMode] = useState('login') // 'login', 'signup', 'forgot-password'
   const [resetPassword, setResetPassword] = useState('')
   const [confirmResetPassword, setConfirmResetPassword] = useState('')
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
 
   // Admin Portal States
   const [adminCodes, setAdminCodes] = useState([])
@@ -191,10 +191,6 @@ function App() {
   const [selectedPresetId, setSelectedPresetId] = useState(null)
 
   const handleToggleBgRemoval = (targetValue) => {
-    if (planTier === 'starter') {
-      setShowUpgradeModal(true)
-      return
-    }
     setBackgroundRemovalActive(targetValue)
   }
 
@@ -3317,50 +3313,6 @@ function App() {
     <div className="app-container">
       <Toaster position="top-center" richColors theme={theme} />
 
-      {showUpgradeModal && (
-        <div className="progress-overlay" style={{ zIndex: 1000, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
-          <div className="modal" style={{ background: 'var(--bg-card)', padding: '30px', borderRadius: '16px', boxShadow: 'var(--shadow-lg)', maxWidth: '450px', width: '90%', position: 'relative', border: '1px solid var(--border-color)' }}>
-            <button 
-              onClick={() => setShowUpgradeModal(false)}
-              style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-            >
-              ×
-            </button>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-              <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: 'var(--primary)', padding: '15px', borderRadius: '50%', marginBottom: '20px' }}>
-                <Sparkles size={32} />
-              </div>
-              <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)', fontSize: '22px' }}>Professional Feature</h3>
-              <p style={{ margin: '0 0 25px 0', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
-                AI Background Removal is a Professional-tier feature. It uses local machine learning to securely isolate subjects without uploading your images to any server.
-              </p>
-              
-              <div style={{ width: '100%', background: 'var(--bg-main)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-main)' }}>Have a Lifetime Deal code?</h4>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input 
-                    type="text" 
-                    value={promoCode} 
-                    onChange={e => setPromoCode(e.target.value)} 
-                    placeholder="Enter AppSumo Code" 
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-main)', outline: 'none' }}
-                  />
-                  <button 
-                    onClick={handleActivateLicense}
-                    className="btn-primary"
-                    style={{ padding: '10px 20px', borderRadius: '8px' }}
-                  >
-                    Activate
-                  </button>
-                </div>
-                <p style={{ margin: '15px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Don't have one? <a href="#" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 'bold' }}>Get it on AppSumo</a>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isProcessing && (
         <div className="progress-overlay">
