@@ -3197,44 +3197,6 @@ function App() {
             </div>
           </form>
 
-          {/* Divider */}
-          <div style={{ height: '1px', background: 'var(--border-color)', margin: '24px 0' }} />
-
-          {/* Sandbox Bypass Mode */}
-          <div style={{
-            padding: '16px',
-            borderRadius: '12px',
-            background: 'rgba(134, 77, 226, 0.04)',
-            border: '1px dashed rgba(134, 77, 226, 0.25)',
-            marginBottom: '24px'
-          }}>
-            <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', fontWeight: 600, color: 'var(--primary)' }}>
-              🔑 Sandbox Demo Mode
-            </h4>
-            <p className="helper-text" style={{ margin: '0 0 12px 0', fontSize: '11px', lineHeight: 1.4 }}>
-              Supabase environment keys are not configured yet. You can bypass authentication and activate all Pro features immediately for local testing.
-            </p>
-            <button
-              type="button"
-              className="btn-primary"
-              style={{ width: '100%', padding: '10px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-              onClick={() => {
-                setSession({
-                  user: {
-                    email: 'sandbox@optisnap.app',
-                    id: 'sandbox-mock-id-12345'
-                  }
-                })
-                setPlanTier('professional')
-                toast.success("Sandbox mode active! All Pro features unlocked. 🚀")
-                setView('app')
-                setCurrentTab('dashboard')
-              }}
-            >
-              Bypass & Run Demo Session
-            </button>
-          </div>
-
           <button
             onClick={() => setView('landing')}
             style={{
