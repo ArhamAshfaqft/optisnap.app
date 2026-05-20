@@ -159,12 +159,7 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return false
 
-    // 1. Check user metadata first
-    if (user.user_metadata?.is_pro) {
-      return true
-    }
-
-    // 2. Query 'profiles' table if available
+    // 1. Query 'profiles' table first (Source of Truth)
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -173,10 +168,25 @@ export const SupabaseService = {
         .single()
       
       if (data && !error) {
-        return !!data.is_pro
+        const dbPro = !!data.is_pro
+        const metaPro = !!user.user_metadata?.is_pro
+        if (dbPro !== metaPro) {
+          supabase.auth.updateUser({
+            data: {
+              is_pro: dbPro,
+              plan_tier: dbPro ? (user.user_metadata?.plan_tier || 'professional') : 'free'
+            }
+          }).catch(err => console.warn("Failed to sync metadata pro state:", err))
+        }
+        return dbPro
       }
     } catch (e) {
       console.warn("Error checking pro database status:", e)
+    }
+
+    // 2. Fallback to user metadata
+    if (user.user_metadata?.is_pro) {
+      return true
     }
 
     return false
@@ -186,15 +196,7 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return 'free'
 
-    // 1. Check user metadata first
-    if (user.user_metadata?.plan_tier) {
-      return user.user_metadata.plan_tier
-    }
-    if (user.user_metadata?.is_pro) {
-      return 'professional'
-    }
-
-    // 2. Query 'profiles' table
+    // 1. Query 'profiles' table first (Source of Truth)
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -203,8 +205,17 @@ export const SupabaseService = {
         .single()
       
       if (data && !error) {
-        if (data.plan_tier) return data.plan_tier
-        if (data.is_pro) return 'professional'
+        const dbTier = data.plan_tier || (data.is_pro ? 'professional' : 'free')
+        const metaTier = user.user_metadata?.plan_tier || (user.user_metadata?.is_pro ? 'professional' : 'free')
+        if (dbTier !== metaTier) {
+          supabase.auth.updateUser({
+            data: {
+              is_pro: dbTier !== 'free',
+              plan_tier: dbTier
+            }
+          }).catch(err => console.warn("Failed to sync metadata plan tier:", err))
+        }
+        return dbTier
       }
     } catch (e) {
       // Fallback in case Profiles table does not have 'plan_tier' column yet
@@ -218,8 +229,16 @@ export const SupabaseService = {
           return 'professional'
         }
       } catch (innerErr) {
-        console.warn("Error checking profile database status:", innerErr)
+        console.warn("Fallback query failed:", innerErr)
       }
+    }
+
+    // 2. Fallback to user metadata
+    if (user.user_metadata?.plan_tier) {
+      return user.user_metadata.plan_tier
+    }
+    if (user.user_metadata?.is_pro) {
+      return 'professional'
     }
 
     return 'free'
@@ -334,6 +353,47 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
+    // 1. Fetch key to see who activated it
+    const { data: codeData, error: fetchError } = await supabase
+      .from('license_codes')
+      .select('activated_by')
+      .eq('code', code)
+      .single()
+
+    if (!fetchError && codeData?.activated_by) {
+      const activatedByUserId = codeData.activated_by
+      // Check if user has other active license codes
+      const { data: otherCodes, error: checkError } = await supabase
+        .from('license_codes')
+        .select('tier')
+        .eq('activated_by', activatedByUserId)
+        .neq('code', code)
+        .eq('is_used', true)
+
+      if (!checkError && otherCodes && otherCodes.length > 0) {
+        const hasPro = otherCodes.some(c => c.tier === 'professional')
+        const bestTier = hasPro ? 'professional' : 'starter'
+        await supabase
+          .from('profiles')
+          .update({
+            is_pro: true,
+            plan_tier: bestTier,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activatedByUserId)
+      } else {
+        await supabase
+          .from('profiles')
+          .update({
+            is_pro: false,
+            plan_tier: 'free',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activatedByUserId)
+      }
+    }
+
+    // 2. Perform delete
     const { data, error } = await supabase
       .from('license_codes')
       .delete()
@@ -351,6 +411,47 @@ export const SupabaseService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("Unauthorized.")
 
+    // 1. Fetch key to see who activated it
+    const { data: codeData, error: fetchError } = await supabase
+      .from('license_codes')
+      .select('activated_by')
+      .eq('code', code)
+      .single()
+
+    if (!fetchError && codeData?.activated_by) {
+      const activatedByUserId = codeData.activated_by
+      // Check if user has other active license codes
+      const { data: otherCodes, error: checkError } = await supabase
+        .from('license_codes')
+        .select('tier')
+        .eq('activated_by', activatedByUserId)
+        .neq('code', code)
+        .eq('is_used', true)
+
+      if (!checkError && otherCodes && otherCodes.length > 0) {
+        const hasPro = otherCodes.some(c => c.tier === 'professional')
+        const bestTier = hasPro ? 'professional' : 'starter'
+        await supabase
+          .from('profiles')
+          .update({
+            is_pro: true,
+            plan_tier: bestTier,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activatedByUserId)
+      } else {
+        await supabase
+          .from('profiles')
+          .update({
+            is_pro: false,
+            plan_tier: 'free',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', activatedByUserId)
+      }
+    }
+
+    // 2. Release code
     const { data, error } = await supabase
       .from('license_codes')
       .update({
