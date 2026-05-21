@@ -34,9 +34,13 @@ const canvasToBlob = (canvas, format, quality) => {
   })
 }
 
+// Yield to the browser event loop so GC can run and UI stays responsive
+const yieldToEventLoop = (ms = 50) => new Promise(r => setTimeout(r, ms))
+
 export const ImageProcessorService = {
   /**
-   * Process a single image file client-side
+   * Process a single image file client-side.
+   * Includes explicit canvas memory cleanup to prevent GPU/heap memory accumulation.
    */
   async processSingleImage(file, settings, onProgress) {
     let currentBlob = file
@@ -62,8 +66,8 @@ export const ImageProcessorService = {
     }
 
     // 2. Setup Canvas & Dimensions
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
+    let canvas = document.createElement('canvas')
+    let ctx = canvas.getContext('2d')
 
     const originalWidth = img.width
     const originalHeight = img.height
@@ -227,6 +231,15 @@ export const ImageProcessorService = {
     
     let processedBlob = await canvasToBlob(canvas, format, quality)
 
+    // *** CRITICAL: Release canvas bitmap memory ***
+    // A 4000x4000 canvas = ~64MB of GPU/heap memory.
+    // Without explicit release, 1000 images = 64GB of unreleased memory.
+    canvas.width = 0
+    canvas.height = 0
+    ctx = null
+    canvas = null
+    img = null
+
     // 5. Lossless Browser Compression (if enabled)
     if (settings.compress?.active) {
       if (onProgress) onProgress("Optimizing compression...")
@@ -247,7 +260,8 @@ export const ImageProcessorService = {
   },
 
   /**
-   * Process a batch of images and generate a downloadable ZIP archive
+   * Process a batch of images and generate a downloadable ZIP archive.
+   * Legacy method — used when batch size is small (≤ chunk threshold).
    */
   async processBatch(files, settings, onProgress) {
     const zip = new JSZip()
@@ -293,6 +307,9 @@ export const ImageProcessorService = {
 
         zip.file(outputFilename, processedBlob)
         processedCount++
+
+        // Yield to event loop periodically to keep UI responsive
+        if (i % 5 === 0) await yieldToEventLoop(10)
       } catch (err) {
         console.error(`Error processing file ${file.name}:`, err)
         errors.push({ file: file.name, error: err.message })
@@ -314,5 +331,131 @@ export const ImageProcessorService = {
 
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     return { zipBlob, processedCount, errors }
+  },
+
+  /**
+   * CRASH-PROOF: Process a large batch of images in memory-safe chunks.
+   * Each chunk produces its own ZIP, which is immediately downloaded and released from memory.
+   * This keeps heap memory bounded regardless of total batch size.
+   *
+   * @param {File[]} files - Array of image files to process
+   * @param {Object} settings - Processing settings
+   * @param {Object} callbacks - { onProgress, onChunkReady, chunkSize }
+   * @returns {{ totalProcessed: number, errors: Array, totalChunks: number }}
+   */
+  async processChunkedBatch(files, settings, { onProgress, onChunkReady, chunkSize = 50 }) {
+    const totalFiles = files.length
+    const totalChunks = Math.ceil(totalFiles / chunkSize)
+    let totalProcessed = 0
+    const totalErrors = []
+
+    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+      const chunkStart = chunkIdx * chunkSize
+      const chunkEnd = Math.min(chunkStart + chunkSize, totalFiles)
+      const chunkFiles = files.slice(chunkStart, chunkEnd)
+
+      let zip = new JSZip()
+      let chunkProcessed = 0
+
+      for (let i = 0; i < chunkFiles.length; i++) {
+        const globalIdx = chunkStart + i
+        const file = chunkFiles[i]
+
+        try {
+          if (onProgress) {
+            onProgress({
+              current: globalIdx + 1,
+              total: totalFiles,
+              percentage: Math.round(((globalIdx + 1) / totalFiles) * 100),
+              statusText: `[Chunk ${chunkIdx + 1}/${totalChunks}] Processing image ${globalIdx + 1} of ${totalFiles}...`,
+              chunk: chunkIdx + 1,
+              totalChunks
+            })
+          }
+
+          const processedBlob = await this.processSingleImage(file, settings, (statusText) => {
+            if (onProgress) {
+              onProgress({
+                current: globalIdx + 1,
+                total: totalFiles,
+                percentage: Math.round((globalIdx / totalFiles) * 100),
+                statusText: `[Chunk ${chunkIdx + 1}/${totalChunks}] [Image ${globalIdx + 1}/${totalFiles}] ${statusText}`,
+                chunk: chunkIdx + 1,
+                totalChunks
+              })
+            }
+          })
+
+          // Naming Logic (preserves global sequential numbering)
+          let outputFilename
+          const format = settings.convert?.active ? (settings.convert.format || 'jpg') : 'jpg'
+
+          if (settings.rename?.active && settings.rename?.baseName) {
+            const seq = (parseInt(settings.rename.startSeq) || 1) + globalIdx
+            outputFilename = `${settings.rename.baseName}-${seq}.${format}`
+          } else {
+            const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || 'image'
+            const suffix = settings.suffix || ''
+            outputFilename = `${nameWithoutExt}${suffix}.${format}`
+          }
+
+          zip.file(outputFilename, processedBlob)
+          chunkProcessed++
+          totalProcessed++
+
+          // Yield to event loop every 3 images to keep UI responsive
+          if (i % 3 === 0) await yieldToEventLoop(10)
+        } catch (err) {
+          console.error(`Error processing file ${file.name}:`, err)
+          totalErrors.push({ file: file.name, error: err.message })
+        }
+      }
+
+      // Generate this chunk's ZIP and deliver it immediately
+      if (chunkProcessed > 0) {
+        if (onProgress) {
+          onProgress({
+            current: chunkEnd,
+            total: totalFiles,
+            percentage: Math.round((chunkEnd / totalFiles) * 100),
+            statusText: `Packaging ZIP${totalChunks > 1 ? ` (part ${chunkIdx + 1}/${totalChunks})` : ''}...`,
+            chunk: chunkIdx + 1,
+            totalChunks
+          })
+        }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+
+        // Deliver the ZIP chunk for immediate download
+        if (onChunkReady) {
+          onChunkReady(zipBlob, chunkIdx, totalChunks)
+        }
+
+        // Save progress for crash recovery
+        try {
+          localStorage.setItem('optisnap_batch_progress', JSON.stringify({
+            completedChunks: chunkIdx + 1,
+            totalChunks,
+            totalProcessed,
+            timestamp: Date.now()
+          }))
+        } catch (e) { /* localStorage may be full, non-critical */ }
+      }
+
+      // *** CRITICAL: Release this chunk's ZIP memory before starting next chunk ***
+      zip = null
+
+      // Yield generously between chunks so GC can reclaim memory
+      if (chunkIdx < totalChunks - 1) {
+        await yieldToEventLoop(200)
+      }
+    }
+
+    // Clear progress on successful completion
+    try {
+      localStorage.removeItem('optisnap_batch_progress')
+    } catch (e) {}
+
+    return { totalProcessed, errors: totalErrors, totalChunks }
   }
 }

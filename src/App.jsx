@@ -130,6 +130,23 @@ const CustomSelect = ({ options, value, onChange, placeholder }) => {
   )
 }
 
+// --- Lazy Thumbnail Component ---
+// Only creates an ObjectURL when mounted (visible); revokes on unmount.
+// This prevents 1000+ blob URLs from being held in memory simultaneously.
+const LazyThumbnail = ({ file }) => {
+  const [src, setSrc] = useState(null)
+
+  useEffect(() => {
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setSrc(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
+  if (!src) return <div style={{ width: '100%', height: '100%', background: 'var(--input-bg)', borderRadius: '6px' }} />
+  return <img src={src} alt="thumbnail" loading="lazy" />
+}
+
 function App() {
   const [currentTab, setCurrentTab] = useState('dashboard')
 
@@ -286,6 +303,61 @@ function App() {
       })
     }
   }, [images])
+
+  // Crash Recovery: Detect interrupted batch processing from previous session
+  useEffect(() => {
+    try {
+      const savedProgress = localStorage.getItem('optisnap_batch_progress')
+      if (savedProgress) {
+        const prog = JSON.parse(savedProgress)
+        const ageMinutes = (Date.now() - prog.timestamp) / 60000
+        if (ageMinutes < 30) {
+          toast.custom((t) => (
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid #f59e0b',
+              padding: '16px',
+              borderRadius: '12px',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '15px',
+              minWidth: '360px'
+            }}>
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.1)',
+                color: '#f59e0b',
+                padding: '10px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <AlertCircle size={24} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>
+                  Batch Was Interrupted
+                </h4>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Your last batch completed <b>{prog.completedChunks}/{prog.totalChunks} parts</b> ({prog.totalProcessed} images) before being interrupted. Already-downloaded ZIPs are in your Downloads folder.
+                </p>
+              </div>
+              <button
+                onClick={() => { toast.dismiss(t); localStorage.removeItem('optisnap_batch_progress') }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', alignSelf: 'flex-start', fontSize: '18px', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+          ), { duration: 15000 })
+        } else {
+          localStorage.removeItem('optisnap_batch_progress')
+        }
+      }
+    } catch (e) {}
+  }, [])
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -596,7 +668,7 @@ function App() {
       id: crypto.randomUUID(),
       file: file,
       name: file.name,
-      previewUrl: URL.createObjectURL(file)
+      previewUrl: null  // Lazy — created on-demand by LazyThumbnail to prevent memory bloat
     }))
 
     setImages(prev => [...prev, ...newImages])
@@ -817,28 +889,43 @@ function App() {
     }
 
     const rawFiles = images.map(img => img.file)
+    const batchTimestamp = Date.now()
 
     try {
-      const result = await ImageProcessorService.processBatch(rawFiles, settings, (prog) => {
-        setProgress(prog)
-      })
+      // CRASH-PROOF: Use chunked processing for memory safety.
+      // Each chunk of 50 images produces its own ZIP, auto-downloads, and releases memory.
+      // For batches ≤50, this behaves identically to the old single-ZIP approach.
+      const result = await ImageProcessorService.processChunkedBatch(rawFiles, settings, {
+        chunkSize: 50,
+        onProgress: (prog) => {
+          setProgress(prog)
+        },
+        onChunkReady: (zipBlob, chunkIndex, totalChunks) => {
+          // Auto-download each chunk's ZIP immediately to free memory
+          const downloadUrl = URL.createObjectURL(zipBlob)
+          const anchor = document.createElement('a')
+          anchor.href = downloadUrl
+          anchor.download = totalChunks === 1
+            ? `optisnap-batch-${batchTimestamp}.zip`
+            : `optisnap-batch-${batchTimestamp}-part${chunkIndex + 1}.zip`
+          document.body.appendChild(anchor)
+          anchor.click()
+          document.body.removeChild(anchor)
+          // Delay revoking to ensure download starts
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 2000)
 
-      // Download the final zip blob
-      const downloadUrl = URL.createObjectURL(result.zipBlob)
-      const anchor = document.createElement('a')
-      anchor.href = downloadUrl
-      anchor.download = `optisnap-batch-${Date.now()}.zip`
-      document.body.appendChild(anchor)
-      anchor.click()
-      document.body.removeChild(anchor)
-      URL.revokeObjectURL(downloadUrl)
+          if (totalChunks > 1) {
+            toast.info(`Downloaded part ${chunkIndex + 1} of ${totalChunks}`, { duration: 3000 })
+          }
+        }
+      })
 
       // Update productivity stats
       setStats(prev => {
         const next = {
-          processedCount: (prev.processedCount || 0) + result.processedCount,
-          timeSavedSeconds: (prev.timeSavedSeconds || 0) + (result.processedCount * 90),
-          costSaved: (prev.costSaved || 0) + (result.processedCount * 0.15)
+          processedCount: (prev.processedCount || 0) + result.totalProcessed,
+          timeSavedSeconds: (prev.timeSavedSeconds || 0) + (result.totalProcessed * 90),
+          costSaved: (prev.costSaved || 0) + (result.totalProcessed * 0.15)
         }
         try {
           localStorage.setItem('optisnap_stats', JSON.stringify(next))
@@ -882,7 +969,7 @@ function App() {
               Batch Finished!
             </h4>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Successfully processed {result.processedCount} images into ZIP.
+              Successfully processed {result.totalProcessed} images{result.totalChunks > 1 ? ` across ${result.totalChunks} ZIP parts` : ' into ZIP'}.
             </p>
           </div>
           <button
@@ -896,7 +983,7 @@ function App() {
 
       // Save new processed count for free trial users
       if (isFreeTrial) {
-        const newCount = processedToday + result.processedCount
+        const newCount = processedToday + result.totalProcessed
         localStorage.setItem('optisnap_free_count', newCount.toString())
       }
 
@@ -1768,12 +1855,14 @@ function App() {
             <div className="image-grid" style={{ marginTop: '30px' }}>
               {images.slice(0, 48).map((img, idx) => (
                 <div key={img.id} className="image-thumbnail" style={{ position: 'relative' }}>
-                  <img src={img.previewUrl} alt="thumbnail" loading="lazy" />
+                  <LazyThumbnail file={img.file} />
                   <div
                     onClick={(e) => {
                       e.stopPropagation()
                       const newImages = [...images]
-                      URL.revokeObjectURL(newImages[idx].previewUrl)
+                      if (newImages[idx].previewUrl) {
+                        URL.revokeObjectURL(newImages[idx].previewUrl)
+                      }
                       newImages.splice(idx, 1)
                       setImages(newImages)
                     }}
