@@ -1957,9 +1957,6 @@ function App() {
                       <span>Packaged into a single, high-speed downloadable ZIP archive.</span>
                     )}
                   </p>
-                  <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Why this exists:</span> Memory-Safe Mode prevents browser crashes and tab lag when processing large batches by cleaning up memory in blocks. We recommend <b>50 images/ZIP</b> as the sweet spot to guarantee zero browser crashes and peak processing speed.
-                  </p>
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -1982,29 +1979,108 @@ function App() {
                       <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Images/ZIP:</span>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         {[30, 50, 100, 200].map(val => (
-                          <button
-                            key={val}
-                            onClick={() => setChunkSize(val)}
-                            type="button"
-                            style={{
-                              padding: '4px 10px',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              borderRadius: '6px',
-                              border: '1px solid',
-                              borderColor: chunkSize === val ? 'var(--primary)' : 'var(--input-border)',
-                              background: chunkSize === val ? 'var(--primary)' : 'var(--input-bg)',
-                              color: chunkSize === val ? 'white' : 'var(--text-secondary)',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                          >
-                            {val}
-                          </button>
+                          <div key={val} style={{ position: 'relative' }}>
+                            <button
+                              onClick={() => setChunkSize(val)}
+                              type="button"
+                              style={{
+                                padding: '6px 12px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                border: '1px solid',
+                                borderColor: chunkSize === val ? 'var(--primary)' : 'var(--input-border)',
+                                background: chunkSize === val ? 'var(--primary)' : 'var(--input-bg)',
+                                color: chunkSize === val ? 'white' : 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {val}
+                              {val === 50 && (
+                                <span style={{ 
+                                  fontSize: '8.5px', 
+                                  background: chunkSize === 50 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(134, 77, 226, 0.1)', 
+                                  color: chunkSize === 50 ? 'white' : 'var(--primary)', 
+                                  padding: '1px 5px', 
+                                  borderRadius: '4px',
+                                  textTransform: 'uppercase',
+                                  fontWeight: 700,
+                                  letterSpacing: '0.03em'
+                                }}>
+                                  Rec.
+                                </span>
+                              )}
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Memory-Safe Mode Explanation and Recommended Badge Callout */}
+              <div style={{
+                marginTop: '18px',
+                padding: '16px 20px',
+                background: 'linear-gradient(135deg, rgba(134, 77, 226, 0.03) 0%, rgba(134, 77, 226, 0.06) 100%)',
+                borderLeft: '4px solid var(--primary)',
+                borderTop: '1px solid rgba(134, 77, 226, 0.08)',
+                borderRight: '1px solid rgba(134, 77, 226, 0.08)',
+                borderBottom: '1px solid rgba(134, 77, 226, 0.08)',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                transition: 'all 0.3s ease',
+                boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.5)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '0.05em', textTransform: 'uppercase', opacity: 0.95 }}>
+                    Why Memory-Safe Mode is crucial for large batches
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  Browser tabs run on strict, client-side memory limits. Processing high-resolution images entirely in-browser consumes massive RAM. 
+                  <strong> Memory-Safe Mode</strong> processes your images in optimized, sequential blocks and automatically downloads them immediately to free up GPU & heap memory, preventing tab lag and browser crashes.
+                </p>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start', 
+                  gap: '10px', 
+                  marginTop: '2px',
+                  background: 'rgba(134, 77, 226, 0.05)', 
+                  padding: '10px 14px', 
+                  borderRadius: '8px',
+                  border: '1px solid rgba(134, 77, 226, 0.12)'
+                }}>
+                  <span style={{ 
+                    fontSize: '9px', 
+                    fontWeight: 800, 
+                    color: 'white', 
+                    background: 'var(--primary)', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px', 
+                    textTransform: 'uppercase',
+                    marginTop: '2px',
+                    letterSpacing: '0.05em',
+                    boxShadow: '0 2px 4px rgba(134, 77, 226, 0.2)',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Why 50 is Recommended
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-main)', lineHeight: 1.45 }}>
+                    Our performance telemetry and core engine tests show <strong>50 images/ZIP</strong> is the ultimate technical sweet spot. It guarantees 100% crash immunity even on budget laptops or mobile devices, maintains peak WASM thread processing speed, and avoids triggering browser warnings for too many simultaneous file downloads.
+                  </span>
                 </div>
               </div>
             </div>
