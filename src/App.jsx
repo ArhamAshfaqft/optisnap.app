@@ -1943,10 +1943,67 @@ function App() {
               )}
             </div>
 
-            <div className="destination-box" style={{ marginTop: '30px', padding: '15px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p className="section-desc" style={{ fontSize: '13px', margin: 0 }}>
-                Output Mode: {enableChunking && images.length > chunkSize ? `Split into ${Math.ceil(images.length / chunkSize)} automatic ZIP downloads.` : 'Packaged into single-click downloadable ZIP archive.'}
-              </p>
+            <div className="destination-box" style={{ marginTop: '30px', padding: '24px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', width: '100%' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    Batch Delivery Settings
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Output Mode: {enableChunking && images.length > chunkSize ? (
+                      <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Split into {Math.ceil(images.length / chunkSize)} automatic ZIP downloads ({chunkSize} images each).</span>
+                    ) : (
+                      <span>Packaged into a single, high-speed downloadable ZIP archive.</span>
+                    )}
+                  </p>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                  {/* Memory Safe Toggle inside Dashboard */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-main)' }}>Memory-Safe Mode</span>
+                    <label className="switch">
+                      <input 
+                        type="checkbox" 
+                        checked={enableChunking} 
+                        onChange={e => setEnableChunking(e.target.checked)} 
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+
+                  {/* Quick Chunk Size controls in Dashboard */}
+                  {enableChunking && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid var(--border-color)', paddingLeft: '20px' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Images/ZIP:</span>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {[30, 50, 100, 200].map(val => (
+                          <button
+                            key={val}
+                            onClick={() => setChunkSize(val)}
+                            type="button"
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              borderRadius: '6px',
+                              border: '1px solid',
+                              borderColor: chunkSize === val ? 'var(--primary)' : 'var(--input-border)',
+                              background: chunkSize === val ? 'var(--primary)' : 'var(--input-bg)',
+                              color: chunkSize === val ? 'white' : 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            {val}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Impact & Savings Analytics Dashboard */}
@@ -3210,32 +3267,74 @@ function App() {
                 <input type="text" value={filenameSuffix} onChange={e => setFilenameSuffix(e.target.value)} />
               </div>
 
-              <div className="form-group" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 600 }}>
+              <div className="form-group" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)' }}>Memory-Safe Batch Processing</label>
+                  <p className="helper-text" style={{ marginTop: '4px', maxWidth: '400px' }}>Splits large batches into separate ZIP files to prevent browser out-of-memory crashes.</p>
+                </div>
+                <label className="switch">
                   <input 
                     type="checkbox" 
                     checked={enableChunking} 
                     onChange={e => setEnableChunking(e.target.checked)} 
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                   />
-                  Memory-Safe Batch Processing (Recommended)
+                  <span className="slider round"></span>
                 </label>
-                <p className="helper-text" style={{ margin: '0 0 8px 28px' }}>
-                  Splits large batches into separate ZIP files to prevent browser out-of-memory crashes.
-                </p>
               </div>
 
               {enableChunking && (
-                <div className="form-group" style={{ marginLeft: '28px', maxWidth: '240px', marginBottom: 0 }}>
-                  <label>Chunk Size (Images per ZIP)</label>
-                  <p className="helper-text">Set how many images are packed in each ZIP file (Default: 50)</p>
-                  <input 
-                    type="number" 
-                    min="10" 
-                    max="500" 
-                    value={chunkSize} 
-                    onChange={e => setChunkSize(Math.max(10, Math.min(500, parseInt(e.target.value, 10) || 50)))} 
-                  />
+                <div className="form-group" style={{ marginBottom: '20px', transition: 'all 0.3s ease' }}>
+                  <label style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Chunk Size</span>
+                    <span style={{ color: 'var(--primary)', fontWeight: 700, background: 'rgba(134, 77, 226, 0.08)', padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
+                      {chunkSize} images per ZIP
+                    </span>
+                  </label>
+                  <p className="helper-text" style={{ marginBottom: '12px' }}>Choose how many images are packed in each downloaded file.</p>
+                  
+                  {/* Premium Range Slider */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '10px' }}>
+                    <input 
+                      type="range" 
+                      min="10" 
+                      max="300" 
+                      step="10"
+                      value={chunkSize} 
+                      onChange={e => setChunkSize(parseInt(e.target.value, 10))} 
+                      style={{ 
+                        flex: 1, 
+                        accentColor: 'var(--primary)', 
+                        height: '6px', 
+                        borderRadius: '3px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
+                  {/* Preset Badges */}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    {[30, 50, 100, 200].map(val => (
+                      <button
+                        key={val}
+                        onClick={() => setChunkSize(val)}
+                        type="button"
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '11px',
+                          fontWeight: 500,
+                          borderRadius: '6px',
+                          border: '1px solid',
+                          borderColor: chunkSize === val ? 'var(--primary)' : 'var(--input-border)',
+                          background: chunkSize === val ? 'rgba(134, 77, 226, 0.08)' : 'var(--bg-card)',
+                          color: chunkSize === val ? 'var(--primary)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {val} {val === 50 ? '(Recommended)' : ''}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
