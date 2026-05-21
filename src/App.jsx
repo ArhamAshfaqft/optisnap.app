@@ -153,6 +153,36 @@ function App() {
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
 
+  // Batch Processing Memory Settings
+  const [enableChunking, setEnableChunking] = useState(() => {
+    try {
+      const saved = localStorage.getItem('optisnap_enable_chunking')
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+  const [chunkSize, setChunkSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('optisnap_chunk_size')
+      return saved ? parseInt(saved, 10) : 50
+    } catch {
+      return 50
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('optisnap_enable_chunking', enableChunking.toString())
+    } catch (e) {}
+  }, [enableChunking])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('optisnap_chunk_size', chunkSize.toString())
+    } catch (e) {}
+  }, [chunkSize])
+
   // Image Processing States (Images are objects: { id, file, name, previewUrl })
   const [images, setImages] = useState([])
   const [view, setView] = useState('landing')
@@ -896,7 +926,7 @@ function App() {
       // Each chunk of 50 images produces its own ZIP, auto-downloads, and releases memory.
       // For batches ≤50, this behaves identically to the old single-ZIP approach.
       const result = await ImageProcessorService.processChunkedBatch(rawFiles, settings, {
-        chunkSize: 50,
+        chunkSize: enableChunking ? chunkSize : 999999,
         onProgress: (prog) => {
           setProgress(prog)
         },
@@ -1830,8 +1860,8 @@ function App() {
                 <div>
                   <h4 style={{ margin: 0, color: 'var(--text-main)' }}>{images.length} {images.length === 1 ? 'Image' : 'Images'} Ready</h4>
                   <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Process will apply <b>active tab configs</b>. {images.length > 50 ? (
-                      <span>Files will download in batches as <b>{Math.ceil(images.length / 50)} ZIP files</b>. Please allow multiple file downloads in your browser settings if prompted.</span>
+                    Process will apply <b>active tab configs</b>. {enableChunking && images.length > chunkSize ? (
+                      <span>Files will download in batches as <b>{Math.ceil(images.length / chunkSize)} ZIP files</b>. Please allow multiple file downloads in your browser settings if prompted.</span>
                     ) : (
                       <span>Files download as a single <b>ZIP archive</b>.</span>
                     )}
@@ -1905,7 +1935,7 @@ function App() {
 
             <div className="destination-box" style={{ marginTop: '30px', padding: '15px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <p className="section-desc" style={{ fontSize: '13px', margin: 0 }}>
-                Output Mode: {images.length > 50 ? `Split into ${Math.ceil(images.length / 50)} automatic ZIP downloads.` : 'Packaged into single-click downloadable ZIP archive.'}
+                Output Mode: {enableChunking && images.length > chunkSize ? `Split into ${Math.ceil(images.length / chunkSize)} automatic ZIP downloads.` : 'Packaged into single-click downloadable ZIP archive.'}
               </p>
             </div>
 
@@ -3164,11 +3194,40 @@ function App() {
             {/* Settings Preferences */}
             <div className="section mt-4" style={{ paddingBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
               <h3>Global Preferences</h3>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label>Filename Suffix</label>
                 <p className="helper-text">Suffix appended to non-renamed outputs (e.g. `photo_processed.png`)</p>
                 <input type="text" value={filenameSuffix} onChange={e => setFilenameSuffix(e.target.value)} />
               </div>
+
+              <div className="form-group" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 600 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={enableChunking} 
+                    onChange={e => setEnableChunking(e.target.checked)} 
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  Memory-Safe Batch Processing (Recommended)
+                </label>
+                <p className="helper-text" style={{ margin: '0 0 8px 28px' }}>
+                  Splits large batches into separate ZIP files to prevent browser out-of-memory crashes.
+                </p>
+              </div>
+
+              {enableChunking && (
+                <div className="form-group" style={{ marginLeft: '28px', maxWidth: '240px', marginBottom: 0 }}>
+                  <label>Chunk Size (Images per ZIP)</label>
+                  <p className="helper-text">Set how many images are packed in each ZIP file (Default: 50)</p>
+                  <input 
+                    type="number" 
+                    min="10" 
+                    max="500" 
+                    value={chunkSize} 
+                    onChange={e => setChunkSize(Math.max(10, Math.min(500, parseInt(e.target.value, 10) || 50)))} 
+                  />
+                </div>
+              )}
             </div>
 
             {/* Saved Presets */}
