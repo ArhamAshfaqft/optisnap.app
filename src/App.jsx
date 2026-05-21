@@ -1830,7 +1830,11 @@ function App() {
                 <div>
                   <h4 style={{ margin: 0, color: 'var(--text-main)' }}>{images.length} {images.length === 1 ? 'Image' : 'Images'} Ready</h4>
                   <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Process will apply <b>active tab configs</b>. Files download as a single <b>ZIP archive</b>.
+                    Process will apply <b>active tab configs</b>. {images.length > 50 ? (
+                      <span>Files will download in batches as <b>{Math.ceil(images.length / 50)} ZIP files</b>. Please allow multiple file downloads in your browser settings if prompted.</span>
+                    ) : (
+                      <span>Files download as a single <b>ZIP archive</b>.</span>
+                    )}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -1901,7 +1905,7 @@ function App() {
 
             <div className="destination-box" style={{ marginTop: '30px', padding: '15px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <p className="section-desc" style={{ fontSize: '13px', margin: 0 }}>
-                Output Mode: Packaged into single-click downloadable ZIP archive.
+                Output Mode: {images.length > 50 ? `Split into ${Math.ceil(images.length / 50)} automatic ZIP downloads.` : 'Packaged into single-click downloadable ZIP archive.'}
               </p>
             </div>
 
