@@ -1865,6 +1865,76 @@ function App() {
               </div>
             )}
 
+            {images.length > 0 && backgroundRemovalActive && (
+              <div style={{
+                marginTop: '20px',
+                padding: '16px 20px',
+                background: (!enableChunking || chunkSize > 50)
+                  ? 'rgba(239, 68, 68, 0.06)'
+                  : 'linear-gradient(135deg, rgba(134, 77, 226, 0.02) 0%, rgba(134, 77, 226, 0.05) 100%)',
+                border: (!enableChunking || chunkSize > 50)
+                  ? '1px solid rgba(239, 68, 68, 0.35)'
+                  : '1px solid rgba(134, 77, 226, 0.15)',
+                borderLeft: (!enableChunking || chunkSize > 50)
+                  ? '4px solid #ef4444'
+                  : '4px solid var(--primary)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '15px',
+                fontSize: '13.5px',
+                lineHeight: 1.45,
+                color: 'var(--text-main)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1, minWidth: '280px' }}>
+                  {(!enableChunking || chunkSize > 50) ? (
+                    <AlertCircle size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  ) : (
+                    <Sparkles size={20} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  )}
+                  <div>
+                    {(!enableChunking || chunkSize > 50) ? (
+                      <div>
+                        <strong style={{ color: '#ef4444' }}>High Tab Crash Risk:</strong> You have active <strong>AI Background Removal</strong> on <strong>{images.length} images</strong>, but Memory-Safe Mode is {!enableChunking ? 'Disabled' : `set to a high limit (${chunkSize})`}. Running heavy AI models locally in a single browser run will likely cause browser memory exhaustion and crash your tab. We strongly recommend enabling Memory-Safe Mode and setting the limit to 30 or 50.
+                      </div>
+                    ) : (
+                      <div>
+                        <strong>AI Processing Optimizer Active:</strong> Batches are safe-chunked at <strong>{chunkSize} images</strong> per ZIP. The AI runs 100% locally and securely in your browser. <strong>Important:</strong> Keep this tab active/focused during processing to prevent browser-throttling or freezing.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {(!enableChunking || chunkSize > 50) && (
+                  <button
+                    onClick={() => {
+                      setEnableChunking(true)
+                      setChunkSize(50)
+                      toast.success("Memory-Safe Mode auto-optimized! 🚀 (Set to 50/ZIP)")
+                    }}
+                    type="button"
+                    className="btn-primary"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Auto-Optimize Batching
+                  </button>
+                )}
+              </div>
+            )}
+
             {images.length > 0 && (
               <div className="action-bar" style={{ marginTop: '20px', padding: '20px', background: 'var(--input-bg)', borderRadius: '12px', border: '1px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
