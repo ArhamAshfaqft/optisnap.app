@@ -1957,6 +1957,9 @@ function App() {
                       <span>Packaged into a single, high-speed downloadable ZIP archive.</span>
                     )}
                   </p>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Why this exists:</span> Memory-Safe Mode prevents browser crashes and tab lag when processing large batches by cleaning up memory in blocks. We recommend <b>50 images/ZIP</b> as the sweet spot to guarantee zero browser crashes and peak processing speed.
+                  </p>
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
