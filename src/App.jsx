@@ -1001,6 +1001,11 @@ function App() {
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
               Successfully processed {result.totalProcessed} images{result.totalChunks > 1 ? ` across ${result.totalChunks} ZIP parts` : ' into ZIP'}.
             </p>
+            {result.totalChunks > 1 && (
+              <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.06)', padding: '6px 8px', borderRadius: '4px', lineHeight: 1.4 }}>
+                ⚠️ <b>Missing parts?</b> If you didn't receive all {result.totalChunks} ZIP files, check your browser's address bar/settings to <b>allow multiple automatic downloads</b>.
+              </p>
+            )}
           </div>
           <button
             onClick={() => toast.dismiss(t)}
@@ -1009,7 +1014,7 @@ function App() {
             ×
           </button>
         </div>
-      ), { duration: 8000 })
+      ), { duration: 15000 })
 
       // Save new processed count for free trial users
       if (isFreeTrial) {
@@ -1018,7 +1023,12 @@ function App() {
       }
 
       if (result.errors.length > 0) {
-        toast.warning(`Completed with ${result.errors.length} error(s). Check browser console.`)
+        const errorDetails = result.errors.slice(0, 3).map(e => `• ${e.file}: ${e.error}`).join('\n')
+        const suffix = result.errors.length > 3 ? `\n...and ${result.errors.length - 3} more files.` : ''
+        toast.warning(`Completed with ${result.errors.length} error(s)`, {
+          description: `Failed items:\n${errorDetails}${suffix}`,
+          duration: 12000
+        })
       }
 
     } catch (error) {
