@@ -92,6 +92,7 @@ const ROW2_REVIEWS = [
 
 export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }) {
   const [activeFaq, setActiveFaq] = useState(null)
+  const [billingCycle, setBillingCycle] = useState('monthly') // 'monthly' or 'lifetime'
 
   const faqs = [
     {
@@ -156,9 +157,9 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
 
   const pricingTiers = [
     {
-      name: "Starter Deal",
-      price: "$49",
-      period: "one-time payment",
+      name: billingCycle === 'monthly' ? "Starter Plan" : "Starter Lifetime",
+      price: billingCycle === 'monthly' ? "$9" : "$49",
+      period: billingCycle === 'monthly' ? "month" : "one-time payment",
       desc: "Perfect for independent sellers and creators starting out.",
       features: [
         "Up to 50 images per batch run",
@@ -175,12 +176,12 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         "Standard support"
       ],
       isPopular: false,
-      cta: "Get Starter Access"
+      cta: billingCycle === 'monthly' ? "Subscribe Starter" : "Get Starter Access"
     },
     {
-      name: "Professional Deal",
-      price: "$99",
-      period: "one-time payment",
+      name: billingCycle === 'monthly' ? "Professional Plan" : "Professional Lifetime",
+      price: billingCycle === 'monthly' ? "$19" : "$99",
+      period: billingCycle === 'monthly' ? "month" : "one-time payment",
       desc: "Best for high-volume stores, power users, and agencies.",
       features: [
         "Unlimited batch sizes",
@@ -192,7 +193,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         "Commercial usage license"
       ],
       isPopular: true,
-      cta: "Get Professional Access"
+      cta: billingCycle === 'monthly' ? "Subscribe Professional" : "Get Professional Access"
     }
   ]
 
@@ -723,20 +724,85 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         transition: 'background 0.3s'
       }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
             <span style={{
-              background: 'rgba(34, 197, 94, 0.1)',
-              color: '#22c55e',
+              background: billingCycle === 'monthly' ? 'rgba(134, 77, 226, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+              color: billingCycle === 'monthly' ? 'var(--primary)' : '#22c55e',
               padding: '6px 16px',
               borderRadius: '30px',
               fontSize: '12px',
               fontWeight: 600,
-              border: '1px solid rgba(34, 197, 94, 0.2)'
+              border: billingCycle === 'monthly' ? '1px solid rgba(134, 77, 226, 0.2)' : '1px solid rgba(34, 197, 94, 0.2)',
+              transition: 'all 0.3s ease',
+              display: 'inline-block',
+              marginBottom: '16px'
             }}>
-              Limited AppSumo Launch Deal
+              {billingCycle === 'monthly' ? 'Flexible Recurring Billing' : 'Limited AppSumo Launch Deal'}
             </span>
-            <h2 style={{ margin: '16px 0 12px 0' }}>One-Time Investment. Lifetime Value.</h2>
-            <p style={{ color: 'var(--text-secondary)' }}>Choose the volume option that aligns with your listing size.</p>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '28px', fontWeight: 700 }}>One-Time Investment or Flexible Plans</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Process images locally with zero cloud limits. Upgrade or cancel anytime.</p>
+            
+            {/* Premium Billing Toggle Selector */}
+            <div style={{
+              display: 'inline-flex',
+              background: 'var(--bg-main)',
+              padding: '4px',
+              borderRadius: '30px',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              marginBottom: '20px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                style={{
+                  padding: '10px 28px',
+                  borderRadius: '24px',
+                  border: 'none',
+                  background: billingCycle === 'monthly' ? 'var(--primary)' : 'transparent',
+                  color: billingCycle === 'monthly' ? 'white' : 'var(--text-secondary)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Monthly Plan
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('lifetime')}
+                style={{
+                  padding: '10px 28px',
+                  borderRadius: '24px',
+                  border: 'none',
+                  background: billingCycle === 'lifetime' ? 'var(--primary)' : 'transparent',
+                  color: billingCycle === 'lifetime' ? 'white' : 'var(--text-secondary)',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                Lifetime Deals
+                <span style={{
+                  fontSize: '9.5px',
+                  background: billingCycle === 'lifetime' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(34, 197, 94, 0.12)',
+                  color: billingCycle === 'lifetime' ? 'white' : '#22c55e',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.3px'
+                }}>
+                  Best Value
+                </span>
+              </button>
+            </div>
           </div>
 
           <div style={{
@@ -754,7 +820,9 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                boxShadow: tier.isPopular ? '0 10px 30px -10px rgba(134, 77, 226, 0.15)' : 'var(--shadow-sm)'
               }}>
                 {tier.isPopular && (
                   <span style={{
@@ -777,18 +845,18 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
 
                 <div>
                   <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>{tier.name}</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', minHeight: '38px' }}>{tier.desc}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', minHeight: '38px', lineHeight: 1.4 }}>{tier.desc}</p>
                   
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '20px' }}>
-                    <span style={{ fontSize: '36px', fontWeight: 800 }}>{tier.price}</span>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>/ {tier.period}</span>
+                    <span style={{ fontSize: '38px', fontWeight: 800, color: 'var(--text-main)' }}>{tier.price}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>/ {tier.period}</span>
                   </div>
 
                   <div className="divider" style={{ margin: '20px 0' }}></div>
 
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 30px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {tier.features.map((feat, fIdx) => (
-                      <li key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                      <li key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13.5px', color: 'var(--text-main)' }}>
                         <Check size={14} style={{ color: '#22c55e', flexShrink: 0 }} />
                         <span>{feat}</span>
                       </li>
@@ -798,8 +866,8 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
 
                 <button
                   className={tier.isPopular ? 'btn-primary' : 'btn-secondary'}
-                  style={{ width: '100%', padding: '12px', textAlign: 'center', fontWeight: 600 }}
-                  onClick={onLaunchApp}
+                  style={{ width: '100%', padding: '14px', textAlign: 'center', fontWeight: 600, fontSize: '14px', borderRadius: '10px' }}
+                  onClick={() => onLaunchApp('settings')}
                 >
                   {tier.cta}
                 </button>
@@ -817,7 +885,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
             fontSize: '13px',
             color: 'var(--text-secondary)'
           }}>
-            📋 Have an AppSumo activation code? Launch the workspace and activate it instantly under Account Settings.
+            📋 Have an AppSumo activation code? Select <strong>"Lifetime Deals"</strong> or log in and redeem it instantly under Account Settings.
           </div>
         </div>
       </section>

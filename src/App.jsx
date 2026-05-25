@@ -1179,6 +1179,25 @@ function App() {
     }
   }
 
+  // Handle direct billing upgrades
+  const handleUpgradeCheckout = (plan) => {
+    let url = ""
+    const email = session?.user?.email ? encodeURIComponent(session.user.email) : ""
+    const userId = session?.user?.id ? encodeURIComponent(session.user.id) : ""
+    
+    if (plan === 'starter') {
+      url = `https://checkout.optisnap.app/starter-monthly?email=${email}&user_id=${userId}`
+    } else if (plan === 'professional') {
+      url = `https://checkout.optisnap.app/professional-monthly?email=${email}&user_id=${userId}`
+    }
+    
+    const toastId = toast.loading("Connecting to secure checkout portal...")
+    setTimeout(() => {
+      toast.dismiss(toastId)
+      window.location.href = url
+    }, 800)
+  }
+
   const handleSignOut = async () => {
     try {
       await SupabaseService.signOut()
@@ -3342,33 +3361,138 @@ function App() {
                     Logged in as: <b>{session.user.user_metadata?.display_name || session.user.email}</b>
                     {session.user.user_metadata?.display_name && <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginTop: '2px' }}>({session.user.email})</span>}
                   </p>
-                  <p style={{ margin: '0 0 20px 0', fontSize: '14px' }}>
-                    Plan Status: <span className={isPro ? 'text-pro' : ''} style={{ fontWeight: 700 }}>
-                      {planTier === 'professional' ? '🚀 PRO Lifetime Deal Active' : planTier === 'starter' ? '⚡ STARTER Lifetime Deal Active' : 'FREE Basic Mode'}
-                    </span>
-                  </p>
-                  
-                  {planTier !== 'professional' && (
-                    <div className="form-group" style={{ padding: '15px', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border-color)', maxWidth: '500px' }}>
-                      <label style={{ fontWeight: 600 }}>
-                        {planTier === 'starter' ? 'Upgrade to Professional' : 'Activate AppSumo Key'}
-                      </label>
-                      <p className="helper-text" style={{ marginBottom: '10px' }}>
-                        {planTier === 'starter' 
-                          ? 'Enter a Professional tier license key below to unlock unlimited batch processing.' 
-                          : 'Paste your AppSumo license key below to unlock limitless processing.'}
-                      </p>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <input
-                          type="text"
-                          value={promoCode}
-                          onChange={e => setPromoCode(e.target.value)}
-                          placeholder="AS-XXXXX..."
-                        />
-                        <button className="btn-primary" onClick={handleActivateLicense}>Activate</button>
-                      </div>
+                  <div style={{
+                    marginTop: '20px',
+                    padding: '20px',
+                    background: 'var(--bg-main)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    maxWidth: '680px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '14.5px', color: 'var(--text-main)', fontWeight: 500 }}>
+                        Current plan: <strong style={{ 
+                          color: planTier !== 'free' ? 'var(--primary)' : 'var(--text-secondary)',
+                          fontSize: '15px'
+                        }}>
+                          {planTier === 'professional' ? '🚀 PRO Lifetime / Subscription' : planTier === 'starter' ? '⚡ STARTER Tier Active' : 'FREE Basic Mode'}
+                        </strong>
+                      </span>
                     </div>
-                  )}
+
+                    {planTier === 'free' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '10px' }}>
+                        {/* Direct Billing Subscriptions */}
+                        <div style={{
+                          padding: '16px',
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between'
+                        }}>
+                          <div>
+                            <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Subscribe Direct</h4>
+                            <p style={{ margin: '0 0 16px 0', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>Unlock advanced features immediately. Cancel subscription anytime.</p>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button 
+                              className="btn-secondary" 
+                              onClick={() => handleUpgradeCheckout('starter')}
+                              style={{ width: '100%', padding: '10px', fontSize: '12px', fontWeight: 600 }}
+                            >
+                              Subscribe Starter ($9/mo)
+                            </button>
+                            <button 
+                              className="btn-primary" 
+                              onClick={() => handleUpgradeCheckout('professional')}
+                              style={{ width: '100%', padding: '10px', fontSize: '12px', fontWeight: 600 }}
+                            >
+                              Subscribe Professional ($19/mo)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* AppSumo Promo Activation */}
+                        <div style={{
+                          padding: '16px',
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between'
+                        }}>
+                          <div>
+                            <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Redeem AppSumo Deal</h4>
+                            <p style={{ margin: '0 0 16px 0', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>Already bought an AppSumo code? Paste it below to unlock lifetime access.</p>
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="text"
+                                value={promoCode}
+                                onChange={e => setPromoCode(e.target.value)}
+                                placeholder="AS-XXXXX..."
+                                style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px' }}
+                              />
+                              <button 
+                                className="btn-primary" 
+                                onClick={handleActivateLicense}
+                                style={{ padding: '8px 14px', fontSize: '12.5px', fontWeight: 600 }}
+                              >
+                                Redeem
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {planTier === 'starter' && (
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '16px',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '10px'
+                      }}>
+                        <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Upgrade to Professional Tier</h4>
+                        <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                          Unlock unlimited bulk batch processing (Starter is capped at 50 images per run).
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
+                          <button 
+                            className="btn-primary" 
+                            onClick={() => handleUpgradeCheckout('professional')}
+                            style={{ padding: '10px 20px', fontSize: '12.5px', fontWeight: 600 }}
+                          >
+                            Upgrade Pro ($19/mo)
+                          </button>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>or redeem a Pro license code:</span>
+                          <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '200px' }}>
+                            <input
+                              type="text"
+                              value={promoCode}
+                              onChange={e => setPromoCode(e.target.value)}
+                              placeholder="AS-XXXXX..."
+                              style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px' }}
+                            />
+                            <button 
+                              className="btn-primary" 
+                              onClick={handleActivateLicense}
+                              style={{ padding: '8px 14px', fontSize: '12.5px', fontWeight: 600 }}
+                            >
+                              Redeem
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ margin: '24px 0' }}></div>
 
                   <button className="btn-secondary" onClick={handleSignOut} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4d4d', borderColor: '#ff4d4d' }}>
                     <LogOut size={16} /> Sign Out
