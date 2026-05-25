@@ -3459,7 +3459,11 @@ function App() {
                           color: planTier !== 'free' ? 'var(--primary)' : 'var(--text-secondary)',
                           fontSize: '15px'
                         }}>
-                          {planTier === 'professional' ? '🚀 PRO Lifetime / Subscription' : planTier === 'starter' ? '⚡ STARTER Tier Active' : 'FREE Basic Mode'}
+                          {planTier === 'professional_lifetime' ? '🚀 PRO Lifetime Deal' : 
+                           planTier === 'starter_lifetime' ? '⚡ STARTER Lifetime Deal' : 
+                           planTier === 'professional' ? '🚀 PRO Monthly Subscription' : 
+                           planTier === 'starter' ? '⚡ STARTER Monthly Subscription' : 
+                           'FREE Basic Mode'}
                         </strong>
                       </span>
                     </div>
@@ -4115,7 +4119,11 @@ function App() {
               letterSpacing: '0.05em',
               lineHeight: 1
             }}>
-              {planTier === 'professional' ? '★ Pro Lifetime' : planTier === 'starter' ? '★ Starter Lifetime' : 'Free Trial'}
+              {planTier === 'professional_lifetime' ? '★ Pro Lifetime' : 
+               planTier === 'starter_lifetime' ? '★ Starter Lifetime' : 
+               planTier === 'professional' ? '★ Pro Monthly' : 
+               planTier === 'starter' ? '★ Starter Monthly' : 
+               'Free Trial'}
             </span>
           </div>
         </div>

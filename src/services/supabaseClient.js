@@ -85,7 +85,9 @@ export const SupabaseService = {
       throw new Error("This code is invalid, already activated, or expired.")
     }
 
-    const activatedTier = codeCheck.tier || 'professional'
+    // Determine lifetime tier for AppSumo activations
+    const rawTier = codeCheck.tier || 'professional'
+    const activatedTier = rawTier.endsWith('_lifetime') ? rawTier : `${rawTier}_lifetime`
 
     // 2. If it's already used
     if (codeCheck.is_used) {
@@ -147,6 +149,7 @@ export const SupabaseService = {
           .upsert({
             id: user.id,
             is_pro: true,
+            plan_tier: activatedTier,
             email: user.email,
             updated_at: new Date().toISOString()
           })
