@@ -1189,9 +1189,6 @@ function App() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("You must be logged in to activate a license.")
 
-      const displayName = user.user_metadata?.display_name || 'User';
-      const [firstName, lastName] = displayName.split(' ');
-
       // Call Freemius public activation API
       const response = await fetch(`https://api.freemius.com/v1/products/30510/licenses/activate.json`, {
         method: 'POST',
@@ -1201,10 +1198,7 @@ function App() {
         body: JSON.stringify({
           license_key: freemiusLicense.trim(),
           uid: user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32).padEnd(32, '0'), // 32-char alphanumeric device UID
-          title: `Web Application Client (${user.email})`,
-          first_name: firstName || 'User',
-          last_name: lastName || 'Optisnap',
-          user_email: user.email
+          title: `Web Application Client (${user.email})`
         })
       })
 
