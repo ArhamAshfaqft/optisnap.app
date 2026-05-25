@@ -1179,6 +1179,70 @@ function App() {
     }
   }
 
+  // Freemius License activation handler
+  const [freemiusLicense, setFreemiusLicense] = useState('')
+  const handleActivateFreemiusLicense = async () => {
+    if (!freemiusLicense) return toast.error("Please enter your Freemius license key.")
+
+    const toastId = toast.loading("Activating license with Freemius...")
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("You must be logged in to activate a license.")
+
+      // Call Freemius public activation API
+      const response = await fetch(`https://api.freemius.com/v1/products/30510/licenses/activate.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          license_key: freemiusLicense.trim(),
+          uid: user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32).padEnd(32, '0'), // 32-char alphanumeric device UID
+          title: `Web Application Client (${user.email})`
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Invalid license key or activation failed.")
+      }
+
+      // Check plan ID from license response to determine correct tier
+      // Starter (50113), Professional (50114)
+      const planId = data.plan_id
+      const activatedTier = planId === 50113 ? 'starter' : 'professional'
+
+      // Save activation state to Supabase profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_pro: true,
+          plan_tier: activatedTier,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+      if (profileError) throw profileError
+
+      // Update auth user metadata so session updates immediately
+      await supabase.auth.updateUser({
+        data: {
+          is_pro: true,
+          plan_tier: activatedTier
+        }
+      })
+
+      setPlanTier(activatedTier)
+      toast.success(`License successfully activated! Features unlocked for ${activatedTier} tier. 🚀`)
+      setFreemiusLicense('')
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || "Failed to activate Freemius license.")
+    } finally {
+      toast.dismiss(toastId)
+    }
+  }
+
   // Handle direct billing upgrades using Freemius SDK
   const handleUpgradeCheckout = (plan) => {
     // Dynamically import to ensure clean bundling if needed, or static import at top.
@@ -3402,7 +3466,7 @@ function App() {
 
                     {planTier === 'free' && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '10px' }}>
-                        {/* Direct Billing Subscriptions */}
+                        {/* Freemius License Activation */}
                         <div style={{
                           padding: '16px',
                           background: 'var(--bg-card)',
@@ -3413,24 +3477,26 @@ function App() {
                           justifyContent: 'space-between'
                         }}>
                           <div>
-                            <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Subscribe Direct</h4>
-                            <p style={{ margin: '0 0 16px 0', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>Unlock advanced features immediately. Cancel subscription anytime.</p>
+                            <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Activate Freemius License</h4>
+                            <p style={{ margin: '0 0 16px 0', fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>Purchased directly? Paste your license key here to activate your account.</p>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <button 
-                              className="btn-secondary" 
-                              onClick={() => handleUpgradeCheckout('starter')}
-                              style={{ width: '100%', padding: '10px', fontSize: '12px', fontWeight: 600 }}
-                            >
-                              Subscribe Starter ($9/mo)
-                            </button>
-                            <button 
-                              className="btn-primary" 
-                              onClick={() => handleUpgradeCheckout('professional')}
-                              style={{ width: '100%', padding: '10px', fontSize: '12px', fontWeight: 600 }}
-                            >
-                              Subscribe Professional ($19/mo)
-                            </button>
+                          <div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <input
+                                type="text"
+                                value={freemiusLicense}
+                                onChange={e => setFreemiusLicense(e.target.value)}
+                                placeholder="sk_xxxx_xxxx_xxxx_xxxx..."
+                                style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
+                              />
+                              <button 
+                                className="btn-primary" 
+                                onClick={handleActivateFreemiusLicense}
+                                style={{ padding: '8px 14px', fontSize: '12.5px', fontWeight: 600 }}
+                              >
+                                Activate
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -3455,7 +3521,7 @@ function App() {
                                 value={promoCode}
                                 onChange={e => setPromoCode(e.target.value)}
                                 placeholder="AS-XXXXX..."
-                                style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px' }}
+                                style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
                               />
                               <button 
                                 className="btn-primary" 
@@ -3478,33 +3544,26 @@ function App() {
                         border: '1px solid var(--border-color)',
                         borderRadius: '10px'
                       }}>
-                        <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Upgrade to Professional Tier</h4>
+                        <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>Upgrade / Activate Professional Tier</h4>
                         <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                          Unlock unlimited bulk batch processing (Starter is capped at 50 images per run).
+                          Activate a Professional license key below to unlock unlimited bulk batch processing (Starter is capped at 50 images per run).
                         </p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
-                          <button 
-                            className="btn-primary" 
-                            onClick={() => handleUpgradeCheckout('professional')}
-                            style={{ padding: '10px 20px', fontSize: '12.5px', fontWeight: 600 }}
-                          >
-                            Upgrade Pro ($19/mo)
-                          </button>
-                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>or redeem a Pro license code:</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Enter Professional license code:</span>
                           <div style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '200px' }}>
                             <input
                               type="text"
-                              value={promoCode}
-                              onChange={e => setPromoCode(e.target.value)}
-                              placeholder="AS-XXXXX..."
-                              style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px' }}
+                              value={freemiusLicense}
+                              onChange={e => setFreemiusLicense(e.target.value)}
+                              placeholder="sk_xxxx_xxxx_xxxx_xxxx..."
+                              style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-main)' }}
                             />
                             <button 
                               className="btn-primary" 
-                              onClick={handleActivateLicense}
+                              onClick={handleActivateFreemiusLicense}
                               style={{ padding: '8px 14px', fontSize: '12.5px', fontWeight: 600 }}
                             >
-                              Redeem
+                              Activate
                             </button>
                           </div>
                         </div>
