@@ -1179,23 +1179,43 @@ function App() {
     }
   }
 
-  // Handle direct billing upgrades
+  // Handle direct billing upgrades using Freemius SDK
   const handleUpgradeCheckout = (plan) => {
-    let url = ""
-    const email = session?.user?.email ? encodeURIComponent(session.user.email) : ""
-    const userId = session?.user?.id ? encodeURIComponent(session.user.id) : ""
-    
-    if (plan === 'starter') {
-      url = `https://checkout.optisnap.app/starter-monthly?email=${email}&user_id=${userId}`
-    } else if (plan === 'professional') {
-      url = `https://checkout.optisnap.app/professional-monthly?email=${email}&user_id=${userId}`
-    }
-    
-    const toastId = toast.loading("Connecting to secure checkout portal...")
-    setTimeout(() => {
-      toast.dismiss(toastId)
-      window.location.href = url
-    }, 800)
+    // Dynamically import to ensure clean bundling if needed, or static import at top.
+    // Since we installed `@freemius/checkout`, we will instantiate it here.
+    import('@freemius/checkout').then(({ Checkout }) => {
+      const checkout = new Checkout({
+        product_id: '30510',
+        public_key: 'pk_17b6836ae8cc78745a78a5b90fc78'
+      })
+
+      // Correct Freemius Plan IDs from the user: Starter (50113), Professional (50114)
+      const planId = plan === 'starter' ? 50113 : 50114
+      
+      const userEmail = session?.user?.email || ''
+
+      checkout.open({
+        plan_id: planId.toString(),
+        email: userEmail,
+        name: 'Optisnap',
+        licenses: 1,
+        success: (purchaseData) => {
+          console.log('Purchase success:', purchaseData)
+          toast.success("Purchase completed successfully! Refreshing details...")
+          // Reload page or re-fetch session details to verify new plan tier
+          setTimeout(() => {
+            window.location.reload()
+          }, 1500)
+        },
+        error: (err) => {
+          console.error('Freemius checkout error:', err)
+          toast.error("Checkout was not completed.")
+        }
+      })
+    }).catch(err => {
+      console.error("Failed to load Freemius SDK:", err)
+      toast.error("Could not launch checkout. Please try again.")
+    })
   }
 
   const handleSignOut = async () => {
@@ -3669,7 +3689,15 @@ function App() {
         <LandingPage
           onLaunchApp={(targetTab) => {
             const tab = typeof targetTab === 'string' ? targetTab : 'dashboard';
-            if (tab === 'settings') {
+            if (tab.startsWith('checkout:')) {
+              const plan = tab.split(':')[1];
+              setView('app');
+              setCurrentTab('settings');
+              // Trigger the checkout modal after rendering settings
+              setTimeout(() => {
+                handleUpgradeCheckout(plan);
+              }, 100);
+            } else if (tab === 'settings') {
               if (!session) {
                 setView('auth')
               } else {

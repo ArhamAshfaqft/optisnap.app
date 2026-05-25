@@ -867,7 +867,10 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 <button
                   className={tier.isPopular ? 'btn-primary' : 'btn-secondary'}
                   style={{ width: '100%', padding: '14px', textAlign: 'center', fontWeight: 600, fontSize: '14px', borderRadius: '10px' }}
-                  onClick={() => onLaunchApp('settings')}
+                  onClick={() => {
+                    const planSlug = tier.isPopular ? 'professional' : 'starter';
+                    onLaunchApp(session ? `checkout:${planSlug}` : 'settings');
+                  }}
                 >
                   {tier.cta}
                 </button>
