@@ -210,8 +210,9 @@ function App() {
   const [authMode, setAuthMode] = useState('login') // 'login', 'signup', 'forgot-password'
   const [resetPassword, setResetPassword] = useState('')
   const [confirmResetPassword, setConfirmResetPassword] = useState('')
-
-
+  // Premium loader state
+  const [workspaceLoading, setWorkspaceLoading] = useState(false)
+  const [loadingText, setLoadingText] = useState('Initializing secure sandboxed runtime...')
   // Admin Portal States
   const [adminCodes, setAdminCodes] = useState([])
   const [adminLoading, setAdminLoading] = useState(false)
@@ -259,8 +260,7 @@ function App() {
         } else {
           setView(currentView => {
             if (currentView === 'auth') {
-              setCurrentTab('dashboard')
-              return 'app'
+              triggerWorkspaceLaunch('dashboard')
             }
             return currentView
           })
@@ -1117,6 +1117,8 @@ function App() {
       } else if (authMode === 'login') {
         await SupabaseService.signIn(authEmail, authPassword)
         toast.success("Signed in successfully! 🚀")
+        // Trigger premium loader transition before displaying workspace
+        triggerWorkspaceLaunch('dashboard')
       } else if (authMode === 'forgot-password') {
         await SupabaseService.sendPasswordResetEmail(authEmail)
         toast.success("Password reset link sent! Check your inbox. 📧")
@@ -3745,31 +3747,62 @@ function App() {
     }
   }
 
+  // Helper to trigger premium workspace loading animation sequence
+  const triggerWorkspaceLaunch = (tab = 'dashboard', postLaunchCallback = null) => {
+    setWorkspaceLoading(true)
+    setLoadingText('Initializing secure sandboxed runtime...')
+    
+    // Simulate step 1
+    setTimeout(() => {
+      setLoadingText('Preparing local machine learning models...')
+    }, 500)
+
+    // Simulate step 2
+    setTimeout(() => {
+      setLoadingText('Securing GPU acceleration parameters...')
+    }, 1000)
+
+    // Finalize transition
+    setTimeout(() => {
+      setView('app')
+      setCurrentTab(tab)
+      setWorkspaceLoading(false)
+      if (postLaunchCallback) postLaunchCallback()
+    }, 1500)
+  }
+
   if (view === 'landing') {
     return (
       <>
         <Toaster position="top-center" richColors theme={theme} />
+        {workspaceLoading && (
+          <div className="workspace-loader-container">
+            <div className="workspace-loader-glow">
+              <div className="workspace-loader-ring"></div>
+              <img src={icon} alt="Logo" className="workspace-loader-logo" />
+            </div>
+            <p className="workspace-loader-text">{loadingText}</p>
+            <span className="workspace-loader-status">OptiSnap Sandbox Engine</span>
+          </div>
+        )}
         <LandingPage
           onLaunchApp={(targetTab) => {
             const tab = typeof targetTab === 'string' ? targetTab : 'dashboard';
             if (tab.startsWith('checkout:')) {
               const plan = tab.split(':')[1];
-              setView('app');
-              setCurrentTab('settings');
-              // Trigger the checkout modal after rendering settings
-              setTimeout(() => {
-                handleUpgradeCheckout(plan);
-              }, 100);
+              triggerWorkspaceLaunch('settings', () => {
+                setTimeout(() => {
+                  handleUpgradeCheckout(plan);
+                }, 100);
+              });
             } else if (tab === 'settings') {
               if (!session) {
                 setView('auth')
               } else {
-                setView('app')
-                setCurrentTab('settings')
+                triggerWorkspaceLaunch('settings');
               }
             } else {
-              setView('app')
-              setCurrentTab(tab)
+              triggerWorkspaceLaunch(tab);
             }
           }}
           session={session}
