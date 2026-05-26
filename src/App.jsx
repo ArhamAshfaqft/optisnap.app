@@ -1211,7 +1211,8 @@ function App() {
 
       // Check plan ID from license response to determine correct tier
       // Starter (50113), Professional (50114)
-      const planId = data.plan_id
+      console.log('Freemius activation response data:', data)
+      const planId = data.license?.plan_id || data.plan_id
       const activatedTier = planId === 50113 ? 'starter' : 'professional'
 
       // Save activation state to Supabase profiles
