@@ -1216,19 +1216,38 @@ function App() {
       const activatedTier = planId === 50113 ? 'starter' : 'professional'
 
       // Save activation state to Supabase profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          is_pro: true,
-          plan_tier: activatedTier,
-          active_license_key: freemiusLicense.trim(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+      let profileError = null
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            is_pro: true,
+            plan_tier: activatedTier,
+            active_license_key: freemiusLicense.trim(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+        profileError = error
+      } catch (dbErr) {
+        profileError = dbErr
+      }
 
-      if (profileError) throw profileError
+      // If active_license_key column doesn't exist, retry update without it
+      if (profileError && (profileError.message?.includes('active_license_key') || profileError.code === 'PGRST204' || profileError.code === '42703')) {
+        const { error: retryError } = await supabase
+          .from('profiles')
+          .update({
+            is_pro: true,
+            plan_tier: activatedTier,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+        if (retryError) throw retryError
+      } else if (profileError) {
+        throw profileError
+      }
 
-      // Update auth user metadata so session updates immediately
+      // Update auth user metadata so session updates immediately (License Key is safe here)
       await supabase.auth.updateUser({
         data: {
           is_pro: true,
@@ -1255,16 +1274,25 @@ function App() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("You must be logged in to deactivate a license.")
 
-      // Fetch the stored license key from profiles
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('active_license_key')
-        .eq('id', user.id)
-        .single()
+      // Fetch the stored license key
+      let licenseKey = user.user_metadata?.active_license_key
 
-      if (fetchError) throw fetchError
+      if (!licenseKey) {
+        // Fallback: Fetch the stored license key from profiles if exists
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('active_license_key')
+            .eq('id', user.id)
+            .single()
+          if (profile?.active_license_key) {
+            licenseKey = profile.active_license_key
+          }
+        } catch (fetchError) {
+          console.warn("Could not read active_license_key from profiles table (it may not exist):", fetchError)
+        }
+      }
 
-      const licenseKey = profile?.active_license_key || user.user_metadata?.active_license_key
       if (!licenseKey) {
         throw new Error("No active Freemius license key found for this account. If you redeemed via AppSumo, please contact support to release a code.")
       }
@@ -1287,17 +1315,36 @@ function App() {
       }
 
       // Revert user profile database details back to free
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          is_pro: false,
-          plan_tier: 'free',
-          active_license_key: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
+      let profileError = null
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            is_pro: false,
+            plan_tier: 'free',
+            active_license_key: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+        profileError = error
+      } catch (dbErr) {
+        profileError = dbErr
+      }
 
-      if (profileError) throw profileError
+      // If active_license_key column doesn't exist, retry reversion update without it
+      if (profileError && (profileError.message?.includes('active_license_key') || profileError.code === 'PGRST204' || profileError.code === '42703')) {
+        const { error: retryError } = await supabase
+          .from('profiles')
+          .update({
+            is_pro: false,
+            plan_tier: 'free',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+        if (retryError) throw retryError
+      } else if (profileError) {
+        throw profileError
+      }
 
       // Revert user authentication metadata back to free
       await supabase.auth.updateUser({
