@@ -1213,7 +1213,15 @@ function App() {
       // Starter (50113), Professional (50114)
       console.log('Freemius activation response data:', data)
       const planId = data.license?.plan_id || data.plan_id
-      const activatedTier = Number(planId) === 50113 ? 'starter' : 'professional'
+      const planName = String(data.license_plan_name || data.plan?.name || data.license?.plan_name || '').toLowerCase()
+      
+      let activatedTier = 'professional'
+      if (Number(planId) === 50113 || planName.includes('starter')) {
+        activatedTier = 'starter'
+      } else if (Number(planId) === 50114 || planName.includes('professional') || planName.includes('pro')) {
+        activatedTier = 'professional'
+      }
+
       const installId = data.install_id || data.id
 
       // Save activation state to Supabase profiles
