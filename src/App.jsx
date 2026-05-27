@@ -1214,6 +1214,7 @@ function App() {
       console.log('Freemius activation response data:', data)
       const planId = data.license?.plan_id || data.plan_id
       const activatedTier = Number(planId) === 50113 ? 'starter' : 'professional'
+      const installId = data.install_id || data.id
 
       // Save activation state to Supabase profiles
       let profileError = null
@@ -1224,6 +1225,7 @@ function App() {
             is_pro: true,
             plan_tier: activatedTier,
             active_license_key: freemiusLicense.trim(),
+            freemius_install_id: installId,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id)
@@ -1232,8 +1234,8 @@ function App() {
         profileError = dbErr
       }
 
-      // If active_license_key column doesn't exist, retry update without it
-      if (profileError && (profileError.message?.includes('active_license_key') || profileError.code === 'PGRST204' || profileError.code === '42703')) {
+      // If columns don't exist, retry update without them
+      if (profileError && (profileError.message?.includes('active_license_key') || profileError.message?.includes('freemius_install_id') || profileError.code === 'PGRST204' || profileError.code === '42703')) {
         const { error: retryError } = await supabase
           .from('profiles')
           .update({
@@ -1247,12 +1249,13 @@ function App() {
         throw profileError
       }
 
-      // Update auth user metadata so session updates immediately (License Key is safe here)
+      // Update auth user metadata so session updates immediately (License Key and Install ID are safe here)
       await supabase.auth.updateUser({
         data: {
           is_pro: true,
           plan_tier: activatedTier,
-          active_license_key: freemiusLicense.trim()
+          active_license_key: freemiusLicense.trim(),
+          freemius_install_id: installId
         }
       })
 
@@ -1274,27 +1277,35 @@ function App() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("You must be logged in to deactivate a license.")
 
-      // Fetch the stored license key
+      // Fetch the stored license key and install ID
       let licenseKey = user.user_metadata?.active_license_key
+      let installId = user.user_metadata?.freemius_install_id
 
-      if (!licenseKey) {
-        // Fallback: Fetch the stored license key from profiles if exists
+      if (!licenseKey || !installId) {
+        // Fallback: Fetch the stored license key and install id from profiles if they exist
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('active_license_key')
+            .select('active_license_key, freemius_install_id')
             .eq('id', user.id)
             .single()
           if (profile?.active_license_key) {
             licenseKey = profile.active_license_key
           }
+          if (profile?.freemius_install_id) {
+            installId = profile.freemius_install_id
+          }
         } catch (fetchError) {
-          console.warn("Could not read active_license_key from profiles table (it may not exist):", fetchError)
+          console.warn("Could not read from profiles table (columns may not exist):", fetchError)
         }
       }
 
       if (!licenseKey) {
         throw new Error("No active Freemius license key found for this account. If you redeemed via AppSumo, please contact support to release a code.")
+      }
+
+      if (!installId) {
+        throw new Error("No active Freemius installation ID found. Please re-activate the license or contact support to release the activation quota manually.")
       }
 
       // Call Freemius public deactivation API
@@ -1305,6 +1316,7 @@ function App() {
         },
         body: JSON.stringify({
           license_key: licenseKey,
+          install_id: Number(installId),
           uid: user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32).padEnd(32, '0') // same device UID used in activation
         })
       })
@@ -1323,6 +1335,7 @@ function App() {
             is_pro: false,
             plan_tier: 'free',
             active_license_key: null,
+            freemius_install_id: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id)
@@ -1332,7 +1345,7 @@ function App() {
       }
 
       // If active_license_key column doesn't exist, retry reversion update without it
-      if (profileError && (profileError.message?.includes('active_license_key') || profileError.code === 'PGRST204' || profileError.code === '42703')) {
+      if (profileError && (profileError.message?.includes('active_license_key') || profileError.message?.includes('freemius_install_id') || profileError.code === 'PGRST204' || profileError.code === '42703')) {
         const { error: retryError } = await supabase
           .from('profiles')
           .update({
@@ -1351,7 +1364,8 @@ function App() {
         data: {
           is_pro: false,
           plan_tier: 'free',
-          active_license_key: null
+          active_license_key: null,
+          freemius_install_id: null
         }
       })
 
