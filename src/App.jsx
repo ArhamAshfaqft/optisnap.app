@@ -1221,6 +1221,7 @@ function App() {
         .update({
           is_pro: true,
           plan_tier: activatedTier,
+          active_license_key: freemiusLicense.trim(),
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)
@@ -1231,7 +1232,8 @@ function App() {
       await supabase.auth.updateUser({
         data: {
           is_pro: true,
-          plan_tier: activatedTier
+          plan_tier: activatedTier,
+          active_license_key: freemiusLicense.trim()
         }
       })
 
@@ -1241,6 +1243,76 @@ function App() {
     } catch (err) {
       console.error(err)
       toast.error(err.message || "Failed to activate Freemius license.")
+    } finally {
+      toast.dismiss(toastId)
+    }
+  }
+
+  // Freemius License deactivation / unlinking handler
+  const handleDeactivateFreemiusLicense = async () => {
+    const toastId = toast.loading("Unlinking device license with Freemius...")
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("You must be logged in to deactivate a license.")
+
+      // Fetch the stored license key from profiles
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('active_license_key')
+        .eq('id', user.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const licenseKey = profile?.active_license_key || user.user_metadata?.active_license_key
+      if (!licenseKey) {
+        throw new Error("No active Freemius license key found for this account. If you redeemed via AppSumo, please contact support to release a code.")
+      }
+
+      // Call Freemius public deactivation API
+      const response = await fetch(`https://api.freemius.com/v1/products/30510/licenses/deactivate.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          license_key: licenseKey,
+          uid: user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32).padEnd(32, '0') // same device UID used in activation
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Deactivation failed on Freemius servers.")
+      }
+
+      // Revert user profile database details back to free
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_pro: false,
+          plan_tier: 'free',
+          active_license_key: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+      if (profileError) throw profileError
+
+      // Revert user authentication metadata back to free
+      await supabase.auth.updateUser({
+        data: {
+          is_pro: false,
+          plan_tier: 'free',
+          active_license_key: null
+        }
+      })
+
+      setPlanTier('free')
+      toast.success("License unlinked and device deactivated successfully! Reverted to Free Plan.")
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || "Failed to deactivate license.")
     } finally {
       toast.dismiss(toastId)
     }
@@ -3469,6 +3541,23 @@ function App() {
                            'FREE Basic Mode'}
                         </strong>
                       </span>
+
+                      {(planTier === 'starter' || planTier === 'professional') && (
+                        <button
+                          className="btn-secondary"
+                          onClick={handleDeactivateFreemiusLicense}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '11px',
+                            color: '#ff4d4d',
+                            borderColor: '#ff4d4d',
+                            fontWeight: 600,
+                            borderRadius: '6px'
+                          }}
+                        >
+                          Unlink License
+                        </button>
+                      )}
                     </div>
 
                     {planTier === 'free' && (
