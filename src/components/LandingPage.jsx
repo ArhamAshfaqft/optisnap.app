@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import icon from '../assets/icon.png'
 import heroShowcase from '../assets/hero-showcase.png'
@@ -91,9 +91,54 @@ const ROW2_REVIEWS = [
   }
 ];
 
+const SIMULATED_PURCHASES = [
+  { name: "John D.", location: "New York, USA", plan: "Pro Lifetime Deal", time: "2 hours ago" },
+  { name: "Sarah M.", location: "London, UK", plan: "Professional Monthly Plan", time: "45 minutes ago" },
+  { name: "Arnaud L.", location: "Paris, France", plan: "Starter Lifetime Deal", time: "5 hours ago" },
+  { name: "Kenji T.", location: "Tokyo, Japan", plan: "Starter Monthly Plan", time: "12 minutes ago" },
+  { name: "David S.", location: "Berlin, Germany", plan: "Pro Lifetime Deal", time: "3 hours ago" },
+  { name: "Maria G.", location: "Madrid, Spain", plan: "Starter Lifetime Deal", time: "1 hour ago" },
+  { name: "Chloe W.", location: "Sydney, Australia", plan: "Professional Monthly Plan", time: "22 minutes ago" },
+  { name: "Emma B.", location: "Toronto, Canada", plan: "Pro Lifetime Deal", time: "4 hours ago" },
+  { name: "Liam O.", location: "Dublin, Ireland", plan: "Starter Lifetime Deal", time: "6 hours ago" },
+  { name: "Sophia K.", location: "Amsterdam, Netherlands", plan: "Professional Monthly Plan", time: "15 minutes ago" },
+  { name: "Marcus L.", location: "Stockholm, Sweden", plan: "Pro Lifetime Deal", time: "50 minutes ago" },
+  { name: "Elena P.", location: "Rome, Italy", plan: "Starter Monthly Plan", time: "35 minutes ago" }
+];
+
 export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }) {
   const [activeFaq, setActiveFaq] = useState(null)
   const [billingCycle, setBillingCycle] = useState('monthly') // 'monthly' or 'lifetime'
+  const [notification, setNotification] = useState(null)
+  const [showNotification, setShowNotification] = useState(false)
+
+  useEffect(() => {
+    const showRandomNotification = () => {
+      const randomIdx = Math.floor(Math.random() * SIMULATED_PURCHASES.length)
+      setNotification(SIMULATED_PURCHASES[randomIdx])
+      setShowNotification(true)
+      
+      // Auto-hide after 6 seconds
+      setTimeout(() => {
+        setShowNotification(false)
+      }, 6000)
+    }
+
+    // First popup after 8 seconds
+    const firstTimeout = setTimeout(() => {
+      showRandomNotification()
+    }, 8000)
+
+    // Subsequent popups every 25 seconds
+    const interval = setInterval(() => {
+      showRandomNotification()
+    }, 25000)
+
+    return () => {
+      clearTimeout(firstTimeout)
+      clearInterval(interval)
+    }
+  }, [])
 
   const faqs = [
     {
@@ -1108,6 +1153,75 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
           </div>
         </div>
       </footer>
+
+      {/* Social Proof Purchase Toast */}
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '24px',
+          zIndex: 1000,
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          maxWidth: '350px',
+          transform: showNotification ? 'translateX(0) scale(1)' : 'translateX(-400px) scale(0.9)',
+          opacity: showNotification ? 1 : 0,
+          transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+          pointerEvents: showNotification ? 'auto' : 'none',
+          backdropFilter: 'blur(8px)',
+          textAlign: 'left'
+        }}>
+          {/* Glowing Avatar/Check Icon Badge */}
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: 'rgba(134, 77, 226, 0.1)',
+            color: 'var(--primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 0 10px rgba(134, 77, 226, 0.15)'
+          }}>
+            <ShoppingBag size={18} />
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.4, fontWeight: 500 }}>
+              <strong>{notification.name}</strong> from {notification.location}
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.2 }}>
+              Purchased <strong style={{ color: 'var(--primary)', fontWeight: 600 }}>{notification.plan}</strong>
+            </span>
+            <span style={{ fontSize: '9px', color: 'var(--text-secondary)', marginTop: '4px', opacity: 0.7 }}>
+              {notification.time}
+            </span>
+          </div>
+
+          <button 
+            onClick={() => setShowNotification(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              fontSize: '18px',
+              padding: '0 0 0 8px',
+              alignSelf: 'flex-start',
+              lineHeight: 1
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }
