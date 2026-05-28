@@ -156,9 +156,8 @@ export const ImageProcessorService = {
         model,
         progress: (key, current, total) => {
           const percentage = Math.round((current / total) * 100)
-          const friendlyKey = key.split('/').pop() || 'model'
           if (onProgress) {
-            onProgress(`Downloading AI Model (${friendlyKey}): ${percentage}%`)
+            onProgress(`Connecting to secure asset server... ${percentage}% (Happens once per browser)`)
           }
         }
       }
@@ -175,7 +174,7 @@ export const ImageProcessorService = {
     try {
       await UpscalerService.preloadModel(scale, (downloadProgress) => {
         if (onProgress) {
-          onProgress(`Downloading Upscaler Model (RealESRGAN-${scale}x.onnx): ${downloadProgress}%`)
+          onProgress(`Connecting to secure asset server... ${downloadProgress}% (Happens once per browser)`)
         }
       })
     } catch (err) {
@@ -199,9 +198,8 @@ export const ImageProcessorService = {
           model: settings.backgroundRemoval.model || 'isnet_quint8',
           progress: (key, current, total) => {
             const percentage = Math.round((current / total) * 100)
-            const friendlyKey = key.split('/').pop() || 'model'
             if (onProgress) {
-              onProgress(`Downloading AI Model (${friendlyKey}): ${percentage}%`)
+              onProgress(`Connecting to secure asset server... ${percentage}% (Happens once per browser)`)
             }
           }
         }

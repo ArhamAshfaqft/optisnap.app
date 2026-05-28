@@ -145,7 +145,7 @@ export const UpscalerService = {
 
     const session = await getSession(scale, (downloadProgress) => {
       if (onProgress) {
-        onProgress(`Downloading model: ${downloadProgress}%`);
+        onProgress(`Connecting to secure asset server... ${downloadProgress}% (Happens once per browser)`);
       }
     });
 

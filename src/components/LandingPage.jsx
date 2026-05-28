@@ -125,6 +125,48 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
   })
   const [weeklyImages, setWeeklyImages] = useState(100)
 
+  // Exit Intent state & hooks
+  const [showExitIntent, setShowExitIntent] = useState(false)
+  const [exitIntentTriggered, setExitIntentTriggered] = useState(false)
+  const [exitTimeLeft, setExitTimeLeft] = useState(600) // 10 minutes
+
+  useEffect(() => {
+    const handleMouseLeave = (e) => {
+      if (e.clientY < 5 && !exitIntentTriggered) {
+        setShowExitIntent(true)
+        setExitIntentTriggered(true)
+        sessionStorage.setItem('optisnap_exit_intent_shown', 'true')
+      }
+    }
+
+    const alreadyShown = sessionStorage.getItem('optisnap_exit_intent_shown')
+    if (alreadyShown) {
+      setExitIntentTriggered(true)
+    } else {
+      document.addEventListener('mouseleave', handleMouseLeave)
+    }
+
+    return () => {
+      document.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [exitIntentTriggered])
+
+  useEffect(() => {
+    if (!showExitIntent || exitTimeLeft <= 0) return
+
+    const interval = setInterval(() => {
+      setExitTimeLeft(prev => prev - 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [showExitIntent, exitTimeLeft])
+
+  const formatExitTime = () => {
+    const mins = Math.floor(exitTimeLeft / 60)
+    const secs = exitTimeLeft % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
   // Countdown timer hook (Option 2)
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -1580,6 +1622,177 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
           >
             ×
           </button>
+        </div>
+      )}
+
+      {/* Exit Intent Flash Discount Popup */}
+      {showExitIntent && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            maxWidth: '500px',
+            width: '100%',
+            borderRadius: '24px',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(139, 92, 246, 0.15)',
+            padding: '36px',
+            position: 'relative',
+            textAlign: 'center',
+            color: 'var(--text-main)',
+            fontFamily: "'Poppins', sans-serif"
+          }}>
+            {/* Close Button */}
+            <button
+              onClick={() => setShowExitIntent(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(0,0,0,0.1)',
+                border: 'none',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                fontSize: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+
+            {/* Glowing Tag */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(139, 92, 246, 0.1)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              color: 'var(--primary)',
+              padding: '6px 14px',
+              borderRadius: '30px',
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '20px',
+              animation: 'pulseGlow 2s infinite ease-in-out'
+            }}>
+              ⚡ Exclusive Fast-Action Deal
+            </div>
+
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: 800,
+              color: 'var(--text-main)',
+              margin: '0 0 12px 0',
+              lineHeight: 1.25,
+              letterSpacing: '-0.02em',
+              textAlign: 'center'
+            }}>
+              Wait! Claim Your <span style={{ color: 'var(--primary)', background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>20% OFF</span> Lifetime Access
+            </h3>
+
+            <p style={{
+              fontSize: '13.5px',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5,
+              margin: '0 0 24px 0',
+              textAlign: 'center'
+            }}>
+              Get <strong>OptiSnap Pro Lifetime</strong> for only <strong style={{ color: 'var(--text-main)', fontSize: '15px' }}>$47</strong> (normally $59) before you leave. This private offer is locked to your session and expires in:
+            </p>
+
+            {/* Countdown Box */}
+            <div style={{
+              background: 'rgba(15, 23, 42, 0.3)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '16px',
+              padding: '16px',
+              display: 'inline-block',
+              marginBottom: '28px'
+            }}>
+              {exitTimeLeft > 0 ? (
+                <span style={{
+                  fontFamily: 'monospace',
+                  fontSize: '36px',
+                  fontWeight: 700,
+                  color: exitTimeLeft < 60 ? '#ef4444' : 'var(--primary)',
+                  letterSpacing: '2px'
+                }}>
+                  {formatExitTime()}
+                </span>
+              ) : (
+                <span style={{ fontSize: '14px', color: '#ef4444', fontWeight: 600 }}>Offer Expired</span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button
+                disabled={exitTimeLeft <= 0}
+                onClick={() => {
+                  setShowExitIntent(false)
+                  onLaunchApp('checkout:professional:lifetime:FAST20')
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '16px 24px',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 20px -10px rgba(139, 92, 246, 0.5)',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  width: '100%'
+                }}
+              >
+                Claim Discount & Checkout
+              </button>
+
+              <button
+                onClick={() => setShowExitIntent(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '8px',
+                  textDecoration: 'underline',
+                  width: '100%',
+                  textAlign: 'center'
+                }}
+              >
+                No thanks, I prefer paying full price later
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

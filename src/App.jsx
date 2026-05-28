@@ -1517,7 +1517,7 @@ function App() {
   }
 
   // Handle direct billing upgrades using Freemius SDK
-  const handleUpgradeCheckout = (plan, cycle = 'monthly') => {
+  const handleUpgradeCheckout = (plan, cycle = 'monthly', coupon = null) => {
     // Dynamically import to ensure clean bundling if needed, or static import at top.
     // Since we installed `@freemius/checkout`, we will instantiate it here.
     import('@freemius/checkout').then(({ Checkout }) => {
@@ -1531,7 +1531,7 @@ function App() {
       
       const userEmail = session?.user?.email || ''
 
-      checkout.open({
+      const openOptions = {
         plan_id: planId.toString(),
         billing_cycle: cycle,
         email: userEmail,
@@ -1549,7 +1549,13 @@ function App() {
           console.error('Freemius checkout error:', err)
           toast.error("Checkout was not completed.")
         }
-      })
+      }
+
+      if (coupon) {
+        openOptions.coupon = coupon;
+      }
+
+      checkout.open(openOptions);
     }).catch(err => {
       console.error("Failed to load Freemius SDK:", err)
       toast.error("Could not launch checkout. Please try again.")
@@ -4806,9 +4812,10 @@ function App() {
               const parts = tab.split(':');
               const plan = parts[1];
               const cycle = parts[2] || 'monthly';
+              const coupon = parts[3] || null;
               triggerWorkspaceLaunch('settings', () => {
                 setTimeout(() => {
-                  handleUpgradeCheckout(plan, cycle);
+                  handleUpgradeCheckout(plan, cycle, coupon);
                 }, 100);
               });
             } else if (tab === 'settings') {
