@@ -1,10 +1,8 @@
-import * as ort from 'onnxruntime-web';
+import * as ort from 'onnxruntime-web/webgpu';
 
-// Set global WASM path for ONNX Runtime Web.
-// If it's already set (e.g. by another library), respect it; otherwise set default.
-if (!ort.env.wasm.wasmPaths) {
-  ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
-}
+// Set global WASM path dynamically matching the current package version
+const version = '1.21.0';
+ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${version}/dist/`;
 
 // Global cached session variables
 let activeSession = null;

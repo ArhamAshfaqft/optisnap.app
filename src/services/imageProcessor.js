@@ -94,9 +94,15 @@ export const ImageProcessorService = {
 
     // Calculate dimensions based on settings
     if (settings.resize?.active) {
-      const resizeWidth = parseInt(settings.resize.width) || null
-      const resizeHeight = parseInt(settings.resize.height) || null
+      let resizeWidth = parseInt(settings.resize.width) || null
+      let resizeHeight = parseInt(settings.resize.height) || null
       const mode = settings.resize.mode || 'inside' // 'inside', 'cover', 'contain', 'fill'
+
+      if (settings.upscaler?.active) {
+        const upScale = settings.upscaler.scale || 2
+        if (resizeWidth) resizeWidth *= upScale
+        if (resizeHeight) resizeHeight *= upScale
+      }
 
       if (resizeWidth || resizeHeight) {
         if (mode === 'inside') {
