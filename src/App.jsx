@@ -1427,7 +1427,7 @@ function App() {
   }
 
   // Handle direct billing upgrades using Freemius SDK
-  const handleUpgradeCheckout = (plan) => {
+  const handleUpgradeCheckout = (plan, cycle = 'monthly') => {
     // Dynamically import to ensure clean bundling if needed, or static import at top.
     // Since we installed `@freemius/checkout`, we will instantiate it here.
     import('@freemius/checkout').then(({ Checkout }) => {
@@ -1443,6 +1443,7 @@ function App() {
 
       checkout.open({
         plan_id: planId.toString(),
+        billing_cycle: cycle,
         email: userEmail,
         name: 'Optisnap',
         licenses: 1,
@@ -4362,10 +4363,12 @@ function App() {
           onLaunchApp={(targetTab) => {
             const tab = typeof targetTab === 'string' ? targetTab : 'dashboard';
             if (tab.startsWith('checkout:')) {
-              const plan = tab.split(':')[1];
+              const parts = tab.split(':');
+              const plan = parts[1];
+              const cycle = parts[2] || 'monthly';
               triggerWorkspaceLaunch('settings', () => {
                 setTimeout(() => {
-                  handleUpgradeCheckout(plan);
+                  handleUpgradeCheckout(plan, cycle);
                 }, 100);
               });
             } else if (tab === 'settings') {

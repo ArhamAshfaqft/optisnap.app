@@ -116,6 +116,64 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
   const [notification, setNotification] = useState(null)
   const [showNotification, setShowNotification] = useState(false)
 
+  // FOMO states
+  const [timeLeft, setTimeLeft] = useState('')
+  const [stats, setStats] = useState({
+    images: 241852,
+    activeUsers: 112,
+    hoursSaved: 7458
+  })
+  const [weeklyImages, setWeeklyImages] = useState(100)
+
+  // Countdown timer hook (Option 2)
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date()
+      const endOfDay = new Date()
+      endOfDay.setHours(23, 59, 59, 999)
+      
+      let diff = endOfDay.getTime() - now.getTime()
+      if (diff < 0) {
+        diff = 24 * 60 * 60 * 1000 - (now.getTime() % (24 * 60 * 60 * 1000))
+      }
+      
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24)
+      const minutes = Math.floor((diff / 1000 / 60) % 60)
+      const seconds = Math.floor((diff / 1000) % 60)
+      
+      const formatNum = (n) => String(n).padStart(2, '0')
+      return `${formatNum(hours)}h : ${formatNum(minutes)}m : ${formatNum(seconds)}s`
+    }
+
+    setTimeLeft(calculateTimeLeft())
+    const interval = setInterval(() => {
+      setTimeLeft(calculateTimeLeft())
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  // Live stats ticking hook (Option 3)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStats(prev => {
+        const imgInc = Math.floor(Math.random() * 2) + 1
+        const userDiff = Math.floor(Math.random() * 5) - 2
+        const nextUsers = Math.min(Math.max(prev.activeUsers + userDiff, 95), 130)
+        const hoursInc = Math.random() > 0.7 ? 1 : 0
+        
+        return {
+          images: prev.images + imgInc,
+          activeUsers: nextUsers,
+          hoursSaved: prev.hoursSaved + hoursInc
+        }
+      })
+    }, 2500)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  // Social Proof popup loop
   useEffect(() => {
     const showRandomNotification = () => {
       const randomIdx = Math.floor(Math.random() * SIMULATED_PURCHASES.length)
@@ -265,6 +323,49 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       color: 'var(--text-main)',
       transition: 'background 0.3s ease, color 0.3s ease'
     }}>
+      {/* Time-Based Urgency Countdown Banner (Option 2) */}
+      <div style={{
+        background: 'linear-gradient(90deg, #8b5cf6 0%, #d946ef 100%)',
+        color: 'white',
+        padding: '10px 20px',
+        textAlign: 'center',
+        fontSize: '13px',
+        fontWeight: 600,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '12px',
+        flexWrap: 'wrap',
+        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.15)',
+        position: 'relative',
+        zIndex: 101
+      }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <Zap size={14} />
+          Special Launch Promotion: Lifetime Deals increase in price in:
+        </span>
+        <span style={{
+          background: 'rgba(0, 0, 0, 0.2)',
+          padding: '4px 12px',
+          borderRadius: '20px',
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          letterSpacing: '0.5px',
+          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)'
+        }}>
+          {timeLeft}
+        </span>
+        <a href="#pricing" style={{
+          color: 'white',
+          textDecoration: 'underline',
+          fontWeight: 700,
+          marginLeft: '4px',
+          cursor: 'pointer'
+        }}>
+          Lock In Lifetime Access &rarr;
+        </a>
+      </div>
+
       {/* Sticky Navigation Header */}
       <header style={{
         position: 'sticky',
@@ -499,7 +600,95 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         </div>
       </section>
 
+      {/* CSS Keyframe Styles for Pulse Animation */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes pulse-green {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .pulse-dot {
+          animation: pulse-green 2.2s infinite ease-in-out;
+        }
+        @media (max-width: 640px) {
+          .stats-divider {
+            display: none !important;
+          }
+        }
+      `}} />
 
+      {/* Live Stats / Processing Milestones (Option 3) */}
+      <section style={{
+        padding: '20px 40px 60px 40px',
+        maxWidth: '1000px',
+        margin: '0 auto',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px',
+          background: 'var(--bg-card)',
+          borderRadius: '16px',
+          border: '1px solid var(--border-color)',
+          padding: '24px 30px',
+          boxShadow: 'var(--shadow-sm)',
+          backdropFilter: 'blur(8px)'
+        }}>
+          {/* Stat Item 1: Images Optimized */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Total Images Processed
+            </span>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)', fontFamily: 'monospace' }}>
+              {stats.images.toLocaleString()}
+            </span>
+            <span style={{ fontSize: '10.5px', color: '#22c55e', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
+              Processing live client-side
+            </span>
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="stats-divider" style={{ width: '1px', background: 'var(--border-color)', height: '50px', alignSelf: 'center' }}></div>
+
+          {/* Stat Item 2: Active Sellers */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Sellers Online
+            </span>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              {stats.activeUsers}
+              <span className="pulse-dot" style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#22c55e',
+                display: 'inline-block'
+              }}></span>
+            </span>
+            <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)' }}>
+              Preparing catalog batches
+            </span>
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="stats-divider" style={{ width: '1px', background: 'var(--border-color)', height: '50px', alignSelf: 'center' }}></div>
+
+          {/* Stat Item 3: Time Saved */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Manual Editing Saved
+            </span>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'monospace' }}>
+              {stats.hoursSaved.toLocaleString()}h
+            </span>
+            <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)' }}>
+              Compared to manual Photoshop
+            </span>
+          </div>
+        </div>
+      </section>
 
       {/* Features Grid Section */}
       <section id="features" style={{
@@ -774,6 +963,134 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         </div>
       </section>
 
+      {/* Loss Aversion / Time-Saved ROI Calculator (Option 4) */}
+      <section style={{
+        padding: '60px 40px',
+        maxWidth: '900px',
+        margin: '0 auto',
+        textAlign: 'center'
+      }}>
+        {/* Style block for calculator responsiveness */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @media (max-width: 768px) {
+            .calc-grid {
+              grid-template-columns: 1fr !important;
+              gap: 24px !important;
+            }
+          }
+        `}} />
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: '20px',
+          border: '1px solid var(--border-color)',
+          padding: '40px',
+          boxShadow: 'var(--shadow-md)',
+          textAlign: 'left'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <span style={{
+              background: 'rgba(134, 77, 226, 0.1)',
+              color: 'var(--primary)',
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              ROI & Time Savings Calculator
+            </span>
+            <h2 style={{ fontSize: '26px', fontWeight: 700, margin: '12px 0 8px 0' }}>How much time are you losing?</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+              Adjust the slider to see how much manual Photoshop time OptiSnap saves you.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', alignItems: 'center' }} className="calc-grid">
+            {/* Slider Input Block */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, fontSize: '15px' }}>Weekly Product Images</span>
+                <span style={{
+                  color: 'var(--primary)',
+                  fontWeight: 700,
+                  fontSize: '18px',
+                  background: 'rgba(134, 77, 226, 0.08)',
+                  padding: '4px 14px',
+                  borderRadius: '8px',
+                  fontFamily: 'monospace'
+                }}>
+                  {weeklyImages} images
+                </span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="500"
+                step="10"
+                value={weeklyImages}
+                onChange={(e) => setWeeklyImages(parseInt(e.target.value, 10))}
+                style={{
+                  width: '100%',
+                  accentColor: 'var(--primary)',
+                  cursor: 'pointer',
+                  height: '6px',
+                  borderRadius: '3px'
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                <span>10 images</span>
+                <span>250 images</span>
+                <span>500+ images</span>
+              </div>
+            </div>
+
+            {/* Calculations Output Block */}
+            <div style={{
+              background: 'var(--bg-main)',
+              borderRadius: '12px',
+              border: '1px solid var(--border-color)',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Manual Photoshop Workflow:</span>
+                <span style={{ fontWeight: 600, color: '#ef4444', textDecoration: 'line-through' }}>
+                  {Math.round(((weeklyImages * 3.5) / 60) * 10) / 10} hours / wk
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>OptiSnap Engine:</span>
+                <span style={{ fontWeight: 700, color: '#22c55e' }}>
+                  {Math.round(((weeklyImages * 2) / 60) * 10) / 10} mins / wk
+                </span>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }}></div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Your Monthly Return (ROI)
+                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--primary)' }}>
+                    {Math.round(((weeklyImages * 3.5) / 60) * 4)} hours saved
+                  </span>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#22c55e' }}>
+                    Save ${Math.round(((weeklyImages * 3.5) / 60) * 4 * 25)}/mo
+                  </span>
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '4px' }}>
+                  *Calculated at standard assistant rates of $25/hr.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Matrix (AppSumo Lifetime Deal) */}
       <section id="pricing" style={{
         padding: '80px 40px',
@@ -862,6 +1179,38 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 </span>
               </button>
             </div>
+
+            {/* Scarcity & Limited Seats Indicator (Option 1) */}
+            {billingCycle === 'lifetime' && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.06)',
+                border: '1px solid rgba(239, 68, 68, 0.15)',
+                borderRadius: '12px',
+                padding: '14px 20px',
+                maxWidth: '550px',
+                margin: '24px auto 0 auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                textAlign: 'left',
+                boxShadow: '0 4px 15px rgba(239, 68, 68, 0.03)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', fontWeight: 600 }}>
+                  <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
+                    AppSumo Launch: 87% of Lifetime seats claimed
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }}>13 / 100 seats remaining</span>
+                </div>
+                {/* Progress Bar */}
+                <div style={{ width: '100%', height: '6px', background: 'var(--bg-main)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: '87%', height: '100%', background: 'linear-gradient(90deg, #ef4444 0%, #ec4899 100%)', borderRadius: '3px' }}></div>
+                </div>
+                <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)' }}>
+                  When the last 13 seats are filled, this introductory Lifetime Offer will be closed permanently.
+                </span>
+              </div>
+            )}
           </div>
 
           <div style={{
@@ -928,7 +1277,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                   style={{ width: '100%', padding: '14px', textAlign: 'center', fontWeight: 600, fontSize: '14px', borderRadius: '10px' }}
                   onClick={() => {
                     const planSlug = tier.isPopular ? 'professional' : 'starter';
-                    onLaunchApp(session ? `checkout:${planSlug}` : 'settings');
+                    onLaunchApp(session ? `checkout:${planSlug}:${billingCycle}` : 'settings');
                   }}
                 >
                   {tier.cta}
