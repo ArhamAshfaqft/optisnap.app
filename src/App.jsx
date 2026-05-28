@@ -278,6 +278,26 @@ function App() {
   }, [backgroundRemovalActive, bgRemovalModel])
 
   const [upscalerPreloadStatus, setUpscalerPreloadStatus] = useState(null)
+  const [showAbandonToast, setShowAbandonToast] = useState(false)
+  const [abandonTimeLeft, setAbandonTimeLeft] = useState(300) // 5 minutes
+  const [abandonedCheckout, setAbandonedCheckout] = useState(null) // { plan, cycle }
+
+  // Countdown timer for Cart Abandonment Toast
+  useEffect(() => {
+    if (!showAbandonToast || abandonTimeLeft <= 0) return
+
+    const interval = setInterval(() => {
+      setAbandonTimeLeft(prev => prev - 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [showAbandonToast, abandonTimeLeft])
+
+  const formatAbandonTime = () => {
+    const mins = Math.floor(abandonTimeLeft / 60)
+    const secs = abandonTimeLeft % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
 
   useEffect(() => {
     let active = true
@@ -1544,6 +1564,12 @@ function App() {
           setTimeout(() => {
             window.location.reload()
           }, 1500)
+        },
+        cancel: () => {
+          console.log('User closed the checkout overlay.')
+          setAbandonedCheckout({ plan, cycle })
+          setShowAbandonToast(true)
+          setAbandonTimeLeft(300) // Reset to 5 minutes
         },
         error: (err) => {
           console.error('Freemius checkout error:', err)
@@ -5313,6 +5339,98 @@ function App() {
       <div className="main-content">
         {renderContent()}
       </div>
+      {/* Cart Abandonment Slide-in Toast */}
+      {showAbandonToast && abandonedCheckout && abandonTimeLeft > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: 'var(--bg-card)',
+          borderRadius: '16px',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 30px rgba(139, 92, 246, 0.1)',
+          padding: '20px',
+          width: '360px',
+          zIndex: 999999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          animation: 'slideInRight 0.3s ease-out',
+          color: 'var(--text-main)',
+          fontFamily: "'Poppins', sans-serif"
+        }}>
+          <style>{`
+            @keyframes slideInRight {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `}</style>
+
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+              <ShoppingBag size={18} />
+              <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Exclusive Offer
+              </span>
+            </div>
+            <button
+              onClick={() => setShowAbandonToast(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                fontSize: '18px',
+                padding: '0 4px',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Body */}
+          <div>
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 700 }}>Need a sweeter deal?</h4>
+            <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              Use coupon code <strong style={{ color: 'var(--primary)' }}>SECURE15</strong> at checkout for an extra <strong>15% OFF</strong>. Valid for the next:
+            </p>
+          </div>
+
+          {/* Timer & CTA */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '4px' }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#ef4444'
+            }}>
+              {formatAbandonTime()}
+            </span>
+
+            <button
+              onClick={() => {
+                setShowAbandonToast(false)
+                handleUpgradeCheckout(abandonedCheckout.plan, abandonedCheckout.cycle, 'SECURE15')
+              }}
+              style={{
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+            >
+              Apply Code & Checkout
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

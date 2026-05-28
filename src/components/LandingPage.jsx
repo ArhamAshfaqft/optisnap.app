@@ -22,7 +22,8 @@ import {
   ShoppingBag,
   Star,
   EyeOff,
-  TrendingUp
+  TrendingUp,
+  Gift
 } from 'lucide-react'
 
 const ROW1_REVIEWS = [
@@ -124,6 +125,74 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
     hoursSaved: 7458
   })
   const [weeklyImages, setWeeklyImages] = useState(100)
+
+  // Spin the Wheel states & hooks
+  const [showSpinWheel, setShowSpinWheel] = useState(false)
+  const [isSpinning, setIsSpinning] = useState(false)
+  const [wheelRotation, setWheelRotation] = useState(0)
+  const [hasSpun, setHasSpun] = useState(() => localStorage.getItem('optisnap_has_spun') === 'true')
+  const [wonDiscount, setWonDiscount] = useState(() => {
+    const savedCode = localStorage.getItem('optisnap_won_code')
+    return savedCode ? '25%' : null
+  })
+  const [wheelTimerLeft, setWheelTimerLeft] = useState(() => {
+    const savedTime = localStorage.getItem('optisnap_won_timer')
+    if (savedTime) {
+      const remaining = Math.floor((parseInt(savedTime) - Date.now()) / 1000)
+      return remaining > 0 ? remaining : 0
+    }
+    return 900 // 15 minutes default
+  })
+
+  // Expiration countdown for spin wheel code
+  useEffect(() => {
+    if (!wonDiscount || wheelTimerLeft <= 0) return
+
+    const interval = setInterval(() => {
+      setWheelTimerLeft(prev => {
+        const next = prev - 1
+        if (next <= 0) {
+          localStorage.removeItem('optisnap_won_code')
+          localStorage.removeItem('optisnap_won_timer')
+        }
+        return next
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [wonDiscount, wheelTimerLeft])
+
+  const formatWheelTime = () => {
+    const mins = Math.floor(wheelTimerLeft / 60)
+    const secs = wheelTimerLeft % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
+  const spinTheWheel = () => {
+    if (isSpinning || hasSpun) return
+
+    setIsSpinning(true)
+    const baseRotation = 5 * 360 // 5 full spins
+    const targetAngleOffset = 90 // Land on 25% Off
+    const randomOffset = Math.floor(Math.random() * 40) - 20
+    const finalRotation = baseRotation + targetAngleOffset + randomOffset
+
+    setWheelRotation(finalRotation)
+
+    setTimeout(() => {
+      setIsSpinning(false)
+      setHasSpun(true)
+      setWonDiscount('25%')
+      
+      const expiry = Date.now() + 15 * 60 * 1000 // 15 minutes
+      localStorage.setItem('optisnap_has_spun', 'true')
+      localStorage.setItem('optisnap_won_code', 'LUCKY25')
+      localStorage.setItem('optisnap_won_timer', expiry.toString())
+      setWheelTimerLeft(900)
+      
+      toast.success("Congratulations! You won 25% Off Pro Lifetime! 🎉")
+    }, 4000)
+  }
 
   // Exit Intent state & hooks
   const [showExitIntent, setShowExitIntent] = useState(false)
@@ -1792,6 +1861,330 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 No thanks, I prefer paying full price later
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Gift / Spin Wheel Trigger */}
+      {!hasSpun && (
+        <button
+          onClick={() => setShowSpinWheel(true)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 20px',
+            borderRadius: '30px',
+            fontWeight: 700,
+            fontSize: '13px',
+            cursor: 'pointer',
+            boxShadow: '0 10px 20px -5px rgba(139, 92, 246, 0.4), 0 0 12px rgba(139, 92, 246, 0.2)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.3s ease',
+            fontFamily: "'Poppins', sans-serif"
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <Gift size={16} />
+          <span>Claim Launch Gift</span>
+        </button>
+      )}
+
+      {/* Persistent Won Discount Banner at bottom */}
+      {wonDiscount && wheelTimerLeft > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: 'var(--bg-card)',
+          borderRadius: '16px',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 30px rgba(139, 92, 246, 0.1)',
+          padding: '16px 20px',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          color: 'var(--text-main)',
+          fontFamily: "'Poppins', sans-serif",
+          animation: 'slideInRight 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.05em' }}>
+              🎁 Your Discount Claimed
+            </span>
+            <span style={{ fontSize: '12.5px', color: 'var(--text-main)', fontWeight: 600 }}>
+              Land: <strong style={{ color: 'var(--primary)' }}>25% OFF</strong> Pro Lifetime
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              fontWeight: 700,
+              color: '#ef4444',
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1px solid rgba(239, 68, 68, 0.15)',
+              padding: '4px 8px',
+              borderRadius: '4px'
+            }}>
+              {formatWheelTime()}
+            </span>
+            <button
+              onClick={() => onLaunchApp('checkout:professional:lifetime:LUCKY25')}
+              style={{
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Checkout
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Spin Wheel Modal overlay */}
+      {showSpinWheel && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'rgba(15, 23, 42, 0.8)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            maxWidth: '440px',
+            width: '100%',
+            borderRadius: '24px',
+            border: '1px solid rgba(139, 92, 246, 0.2)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(139, 92, 246, 0.1)',
+            padding: '36px',
+            position: 'relative',
+            textAlign: 'center',
+            color: 'var(--text-main)',
+            fontFamily: "'Poppins', sans-serif"
+          }}>
+            {/* Close Button */}
+            {!isSpinning && (
+              <button
+                onClick={() => setShowSpinWheel(false)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'rgba(0,0,0,0.05)',
+                  border: 'none',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  fontSize: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            )}
+
+            <h3 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', textAlign: 'center' }}>
+              🎁 Try Your Luck!
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 24px 0', lineHeight: 1.4, textAlign: 'center' }}>
+              Spin the lucky wheel to unlock an exclusive launch discount on Pro Lifetime. You get exactly <strong>1 spin</strong>!
+            </p>
+
+            {/* The Wheel Visual Container */}
+            <div style={{
+              position: 'relative',
+              width: '260px',
+              height: '260px',
+              margin: '0 auto 28px auto',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {/* Top pointer */}
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                zIndex: 20,
+                width: 0,
+                height: 0,
+                borderLeft: '12px solid transparent',
+                borderRight: '12px solid transparent',
+                borderTop: '24px solid #ef4444',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+              }}></div>
+
+              {/* Wheel circle */}
+              <div style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '6px solid var(--border-color)',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.4)',
+                background: 'conic-gradient(#864de2 0deg 60deg, #7c3aed 60deg 120deg, #6d28d9 120deg 180deg, #5b21b6 180deg 240deg, #4c1d95 240deg 300deg, #3b0764 300deg 360deg)',
+                transform: `rotate(-${wheelRotation}deg)`,
+                transition: isSpinning ? 'transform 4s cubic-bezier(0.1, 0.8, 0.1, 1)' : 'none',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                {/* Text slices rotated inside conic gradient */}
+                {[
+                  { text: '5% OFF', deg: 30 },
+                  { text: '10% OFF', deg: 90 },
+                  { text: '15% OFF', deg: 150 },
+                  { text: '20% OFF', deg: 210 },
+                  { text: '25% OFF', deg: 270 }, // Land target!
+                  { text: 'Try Again', deg: 330 }
+                ].map((slice, idx) => (
+                  <div key={idx} style={{
+                    position: 'absolute',
+                    top: '0',
+                    left: '50%',
+                    width: '100px',
+                    height: '130px',
+                    transformOrigin: '50% 100%',
+                    transform: `translateX(-50%) rotate(${slice.deg}deg)`,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    paddingTop: '20px',
+                    boxSizing: 'border-box'
+                  }}>
+                    <span style={{
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                      letterSpacing: '0.05em'
+                    }}>
+                      {slice.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Inner glowing center pin */}
+              <div style={{
+                position: 'absolute',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+                border: '3px solid var(--primary)',
+                boxShadow: '0 0 10px rgba(139, 92, 246, 0.5)',
+                zIndex: 15,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  width: '14px',
+                  height: '14px',
+                  borderRadius: '50%',
+                  background: 'var(--primary)'
+                }}></div>
+              </div>
+            </div>
+
+            {/* Controls */}
+            {wonDiscount ? (
+              <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.06)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  marginBottom: '20px'
+                }}>
+                  <h4 style={{ margin: '0 0 4px 0', color: '#10b981', fontSize: '15px', fontWeight: 700, textAlign: 'center' }}>
+                    You Won 25% Off Pro Lifetime! 🎉
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4, textAlign: 'center' }}>
+                    Your coupon code <strong style={{ color: 'var(--primary)' }}>LUCKY25</strong> is applied and reserved for the next:
+                  </p>
+                  <div style={{
+                    fontFamily: 'monospace',
+                    fontSize: '22px',
+                    fontWeight: 700,
+                    color: '#ef4444',
+                    marginTop: '8px',
+                    textAlign: 'center'
+                  }}>
+                    {formatWheelTime()}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowSpinWheel(false)
+                    onLaunchApp('checkout:professional:lifetime:LUCKY25')
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '14px 24px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    width: '100%',
+                    boxShadow: '0 8px 16px rgba(139,92,246,0.3)'
+                  }}
+                >
+                  Claim Discount & Checkout
+                </button>
+              </div>
+            ) : (
+              <button
+                disabled={isSpinning || hasSpun}
+                onClick={spinTheWheel}
+                style={{
+                  background: (isSpinning || hasSpun) ? 'var(--border-color)' : 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: (isSpinning || hasSpun) ? 'not-allowed' : 'pointer',
+                  width: '100%',
+                  boxShadow: (isSpinning || hasSpun) ? 'none' : '0 8px 16px rgba(139,92,246,0.3)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {isSpinning ? 'Spinning...' : 'Spin the Wheel'}
+              </button>
+            )}
           </div>
         </div>
       )}
