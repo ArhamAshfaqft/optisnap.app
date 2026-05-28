@@ -186,7 +186,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       
       const expiry = Date.now() + 15 * 60 * 1000 // 15 minutes
       localStorage.setItem('optisnap_has_spun', 'true')
-      localStorage.setItem('optisnap_won_code', 'LUCKY25')
+      localStorage.setItem('optisnap_won_code', 'MYLUCKY25')
       localStorage.setItem('optisnap_won_timer', expiry.toString())
       setWheelTimerLeft(900)
       
@@ -1820,7 +1820,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 disabled={exitTimeLeft <= 0}
                 onClick={() => {
                   setShowExitIntent(false)
-                  onLaunchApp('checkout:professional:lifetime:FAST20')
+                  onLaunchApp('checkout:professional:lifetime:FASTACTION')
                 }}
                 style={{
                   background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
@@ -1939,7 +1939,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
               {formatWheelTime()}
             </span>
             <button
-              onClick={() => onLaunchApp('checkout:professional:lifetime:LUCKY25')}
+              onClick={() => onLaunchApp('checkout:professional:lifetime:MYLUCKY25')}
               style={{
                 background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
                 color: 'white',
@@ -2129,7 +2129,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                     You Won 25% Off Pro Lifetime! 🎉
                   </h4>
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4, textAlign: 'center' }}>
-                    Your coupon code <strong style={{ color: 'var(--primary)' }}>LUCKY25</strong> is applied and reserved for the next:
+                    Your coupon code <strong style={{ color: 'var(--primary)' }}>MYLUCKY25</strong> is applied and reserved for the next:
                   </p>
                   <div style={{
                     fontFamily: 'monospace',
@@ -2146,7 +2146,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 <button
                   onClick={() => {
                     setShowSpinWheel(false)
-                    onLaunchApp('checkout:professional:lifetime:LUCKY25')
+                    onLaunchApp('checkout:professional:lifetime:MYLUCKY25')
                   }}
                   style={{
                     background: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',

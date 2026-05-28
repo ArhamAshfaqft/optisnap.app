@@ -5394,7 +5394,7 @@ function App() {
           <div>
             <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 700 }}>Need a sweeter deal?</h4>
             <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              Use coupon code <strong style={{ color: 'var(--primary)' }}>SECURE15</strong> at checkout for an extra <strong>15% OFF</strong>. Valid for the next:
+              Use coupon code <strong style={{ color: 'var(--primary)' }}>SWEET15</strong> at checkout for an extra <strong>15% OFF</strong>. Valid for the next:
             </p>
           </div>
 
@@ -5412,7 +5412,7 @@ function App() {
             <button
               onClick={() => {
                 setShowAbandonToast(false)
-                handleUpgradeCheckout(abandonedCheckout.plan, abandonedCheckout.cycle, 'SECURE15')
+                handleUpgradeCheckout(abandonedCheckout.plan, abandonedCheckout.cycle, 'SWEET15')
               }}
               style={{
                 background: 'var(--primary)',
