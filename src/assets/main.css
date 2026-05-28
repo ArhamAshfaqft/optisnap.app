@@ -91,6 +91,7 @@ body {
   flex-direction: column;
   padding: 24px;
   transition: background-color 0.3s;
+  overflow-y: auto;
 }
 
 .logo {
