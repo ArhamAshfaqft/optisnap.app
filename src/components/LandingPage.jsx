@@ -92,18 +92,22 @@ const ROW2_REVIEWS = [
 ];
 
 const SIMULATED_PURCHASES = [
-  { name: "John D.", location: "New York, USA", plan: "Pro Lifetime Deal", time: "2 hours ago" },
-  { name: "Sarah M.", location: "London, UK", plan: "Professional Monthly Plan", time: "45 minutes ago" },
-  { name: "Arnaud L.", location: "Paris, France", plan: "Starter Lifetime Deal", time: "5 hours ago" },
-  { name: "Kenji T.", location: "Tokyo, Japan", plan: "Starter Monthly Plan", time: "12 minutes ago" },
-  { name: "David S.", location: "Berlin, Germany", plan: "Pro Lifetime Deal", time: "3 hours ago" },
-  { name: "Maria G.", location: "Madrid, Spain", plan: "Starter Lifetime Deal", time: "1 hour ago" },
-  { name: "Chloe W.", location: "Sydney, Australia", plan: "Professional Monthly Plan", time: "22 minutes ago" },
-  { name: "Emma B.", location: "Toronto, Canada", plan: "Pro Lifetime Deal", time: "4 hours ago" },
-  { name: "Liam O.", location: "Dublin, Ireland", plan: "Starter Lifetime Deal", time: "6 hours ago" },
-  { name: "Sophia K.", location: "Amsterdam, Netherlands", plan: "Professional Monthly Plan", time: "15 minutes ago" },
-  { name: "Marcus L.", location: "Stockholm, Sweden", plan: "Pro Lifetime Deal", time: "50 minutes ago" },
-  { name: "Elena P.", location: "Rome, Italy", plan: "Starter Monthly Plan", time: "35 minutes ago" }
+  { name: "John D.", location: "New York, USA", plan: "Pro Lifetime Deal", time: "1 day ago" },
+  { name: "Sarah M.", location: "London, UK", plan: "Professional Monthly Plan", time: "18 hours ago" },
+  { name: "Arnaud L.", location: "Paris, France", plan: "Starter Lifetime Deal", time: "1 day ago" },
+  { name: "Kenji T.", location: "Tokyo, Japan", plan: "Starter Monthly Plan", time: "14 hours ago" },
+  { name: "David S.", location: "Berlin, Germany", plan: "Pro Lifetime Deal", time: "2 days ago" },
+  { name: "Maria G.", location: "Madrid, Spain", plan: "Starter Lifetime Deal", time: "15 hours ago" },
+  { name: "Chloe W.", location: "Sydney, Australia", plan: "Professional Monthly Plan", time: "22 hours ago" },
+  { name: "Emma B.", location: "Toronto, Canada", plan: "Pro Lifetime Deal", time: "1 day ago" },
+  { name: "Liam O.", location: "Dublin, Ireland", plan: "Starter Lifetime Deal", time: "12 hours ago" },
+  { name: "Sophia K.", location: "Amsterdam, Netherlands", plan: "Professional Monthly Plan", time: "19 hours ago" },
+  { name: "Marcus L.", location: "Stockholm, Sweden", plan: "Pro Lifetime Deal", time: "2 days ago" },
+  { name: "Elena P.", location: "Rome, Italy", plan: "Starter Monthly Plan", time: "16 hours ago" },
+  { name: "Lucas M.", location: "São Paulo, Brazil", plan: "Pro Lifetime Deal", time: "1 day ago" },
+  { name: "Oliver H.", location: "London, UK", plan: "Starter Lifetime Deal", time: "21 hours ago" },
+  { name: "Mia K.", location: "Munich, Germany", plan: "Professional Monthly Plan", time: "13 hours ago" },
+  { name: "Ryan P.", location: "San Francisco, USA", plan: "Pro Lifetime Deal", time: "1 day ago" }
 ];
 
 export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }) {
