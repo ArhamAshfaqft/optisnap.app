@@ -21,7 +21,8 @@ import {
   HelpCircle,
   ShoppingBag,
   Star,
-  EyeOff
+  EyeOff,
+  TrendingUp
 } from 'lucide-react'
 
 const ROW1_REVIEWS = [
@@ -124,9 +125,14 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       desc: "Remove distracting backgrounds in seconds using optimized AI models."
     },
     {
+      icon: <TrendingUp size={22} className="text-pro" />,
+      title: "Neural AI Upscaler",
+      desc: "Double or quadruple image resolution locally using neural networks to eliminate blur and artifacts."
+    },
+    {
       icon: <Scaling size={22} className="text-pro" />,
-      title: "Crop Padding Presets",
-      desc: "Instantly crop or fit images to standard presets for Etsy, Shopify, Pinterest, and Instagram."
+      title: "Smart Crop & Auto-Center",
+      desc: "Automatically crop margins and center products to meet Amazon and Google compliance standard specs."
     },
     {
       icon: <Minimize2 size={22} className="text-pro" />,
@@ -165,6 +171,8 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         "Up to 50 images per batch run",
         "Unlimited daily batches",
         "Premium AI Background Removal (Local ML)",
+        "Real-ESRGAN 2x AI Upscaler (Local ML)",
+        "Smart Crop & Auto-Centering (Local ML)",
         "No Forced Watermarks",
         "E-commerce presets (Etsy, Shopify, Amazon)",
         "Blurred padding options",
@@ -187,6 +195,8 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         "Unlimited batch sizes",
         "Unlimited daily batches",
         "Premium AI Background Removal (Local ML)",
+        "Real-ESRGAN 2x & 4x AI Upscaler (Local ML)",
+        "Smart Crop & Auto-Centering (Local ML)",
         "No Forced Watermarks",
         "All Starter features included",
         "Priority customer support",
