@@ -271,7 +271,8 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
   const pricingTiers = [
     {
       name: billingCycle === 'monthly' ? "Starter Plan" : "Starter Lifetime",
-      price: billingCycle === 'monthly' ? "$9" : "$49",
+      price: billingCycle === 'monthly' ? "$9" : "$29",
+      originalPrice: billingCycle === 'monthly' ? null : "$49",
       period: billingCycle === 'monthly' ? "month" : "one-time payment",
       desc: "Perfect for independent sellers and creators starting out.",
       features: [
@@ -295,7 +296,8 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
     },
     {
       name: billingCycle === 'monthly' ? "Professional Plan" : "Professional Lifetime",
-      price: billingCycle === 'monthly' ? "$19" : "$99",
+      price: billingCycle === 'monthly' ? "$19" : "$59",
+      originalPrice: billingCycle === 'monthly' ? null : "$99",
       period: billingCycle === 'monthly' ? "month" : "one-time payment",
       desc: "Best for high-volume stores, power users, and agencies.",
       features: [
@@ -1198,16 +1200,16 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', fontWeight: 600 }}>
                   <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span>
-                    AppSumo Launch: 87% of Lifetime seats claimed
+                    Early-Bird Launch: 87% of promo licenses claimed
                   </span>
-                  <span style={{ color: 'var(--text-secondary)' }}>13 / 100 seats remaining</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>13 / 100 slots remaining</span>
                 </div>
                 {/* Progress Bar */}
                 <div style={{ width: '100%', height: '6px', background: 'var(--bg-main)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ width: '87%', height: '100%', background: 'linear-gradient(90deg, #ef4444 0%, #ec4899 100%)', borderRadius: '3px' }}></div>
                 </div>
                 <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)' }}>
-                  When the last 13 seats are filled, this introductory Lifetime Offer will be closed permanently.
+                  Once the remaining 13 slots are filled, prices will increase to standard $49 (Starter) and $99 (Pro) lifetime deal rates.
                 </span>
               </div>
             )}
@@ -1257,6 +1259,11 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                   
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '20px' }}>
                     <span style={{ fontSize: '38px', fontWeight: 800, color: 'var(--text-main)' }}>{tier.price}</span>
+                    {tier.originalPrice && (
+                      <span style={{ fontSize: '20px', textDecoration: 'line-through', opacity: 0.5, marginLeft: '4px', marginRight: '4px', fontWeight: 500 }}>
+                        {tier.originalPrice}
+                      </span>
+                    )}
                     <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>/ {tier.period}</span>
                   </div>
 
