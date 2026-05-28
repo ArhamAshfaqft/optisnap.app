@@ -277,6 +277,32 @@ function App() {
     }
   }, [backgroundRemovalActive, bgRemovalModel])
 
+  const [upscalerPreloadStatus, setUpscalerPreloadStatus] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    if (upscalerSettings.active) {
+      setUpscalerPreloadStatus("Initializing upscaler preload...")
+      ImageProcessorService.preloadUpscaler(upscalerSettings.scale || 2, (statusText) => {
+        if (active) setUpscalerPreloadStatus(statusText)
+      }).then(() => {
+        if (active) {
+          setUpscalerPreloadStatus("AI Upscaler loaded and ready!")
+          setTimeout(() => {
+            if (active) setUpscalerPreloadStatus(null)
+          }, 4000)
+        }
+      }).catch(() => {
+        if (active) setUpscalerPreloadStatus(null)
+      })
+    } else {
+      setUpscalerPreloadStatus(null)
+    }
+    return () => {
+      active = false
+    }
+  }, [upscalerSettings.active, upscalerSettings.scale])
+
   const handleToggleUpscaler = (targetValue) => {
     if (planTier === 'free') {
       toast.info("AI Upscaler is a premium feature. Please activate OptiSnap Pro/Starter to use it.", {
@@ -3162,6 +3188,34 @@ function App() {
                   </p>
                 )}
               </div>
+
+              {upscalerPreloadStatus && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'rgba(139, 92, 246, 0.08)',
+                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
+                  color: 'var(--text-main)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  {upscalerPreloadStatus.includes("ready") ? (
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }}></div>
+                  ) : (
+                    <div className="animate-spin" style={{
+                      width: '14px',
+                      height: '14px',
+                      border: '2px solid rgba(139, 92, 246, 0.3)',
+                      borderTop: '2px solid var(--primary)',
+                      borderRadius: '50%'
+                    }}></div>
+                  )}
+                  <span style={{ fontWeight: 500 }}>{upscalerPreloadStatus}</span>
+                </div>
+              )}
 
               <button className="btn-primary" onClick={() => handleProcess('upscaler')} disabled={isProcessing}>
                 Start AI Upscale Batch

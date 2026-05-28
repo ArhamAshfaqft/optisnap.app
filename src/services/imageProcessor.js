@@ -169,6 +169,21 @@ export const ImageProcessorService = {
   },
 
   /**
+   * Preload AI Upscaler model in background.
+   */
+  async preloadUpscaler(scale = 2, onProgress) {
+    try {
+      await UpscalerService.preloadModel(scale, (downloadProgress) => {
+        if (onProgress) {
+          onProgress(`Downloading Upscaler Model (RealESRGAN-${scale}x.onnx): ${downloadProgress}%`)
+        }
+      })
+    } catch (err) {
+      console.warn("Failed to preload AI upscaler model:", err)
+    }
+  },
+
+  /**
    * Process a single image file client-side.
    * Includes explicit canvas memory cleanup to prevent GPU/heap memory accumulation.
    */

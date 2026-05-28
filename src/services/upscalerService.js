@@ -116,6 +116,17 @@ async function getSession(scale, onProgress) {
 
 export const UpscalerService = {
   /**
+   * Preloads the upscaler session/model in the background.
+   */
+  async preloadModel(scale, onProgress) {
+    try {
+      await getSession(scale, onProgress);
+    } catch (err) {
+      console.warn("Failed to preload upscaler model:", err);
+    }
+  },
+
+  /**
    * Upscales an image blob or file using a memory-safe overlap tiling strategy.
    *
    * @param {Blob|File} fileOrBlob - Input image
