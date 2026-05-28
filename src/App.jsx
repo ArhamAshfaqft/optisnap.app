@@ -1212,8 +1212,7 @@ function App() {
       // Check plan ID from license response to determine correct tier
       // Starter (50113), Professional (50114)
       console.log('Freemius activation response data:', data)
-      toast.info(`DEBUG: ${JSON.stringify(data).slice(0, 150)}...`, { autoClose: false })
-      
+
       const planId = data.license?.plan_id || data.plan_id
       const planName = String(data.license_plan_name || data.plan?.name || data.license?.plan_name || '').toLowerCase()
       
