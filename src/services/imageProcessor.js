@@ -35,6 +35,114 @@ const canvasToBlob = (canvas, format, quality) => {
   })
 }
 
+// Helper to detect e-commerce product bounding box (transparency and solid backgrounds)
+const detectProductBounds = (img, tolerance = 15) => {
+  const scanSize = 400
+  const scanCanvas = document.createElement('canvas')
+  scanCanvas.width = scanSize
+  scanCanvas.height = scanSize
+  const scanCtx = scanCanvas.getContext('2d')
+  
+  // Stretch draw for fast pixel scanning
+  scanCtx.drawImage(img, 0, 0, scanSize, scanSize)
+  
+  let data
+  try {
+    data = scanCtx.getImageData(0, 0, scanSize, scanSize).data
+  } catch (e) {
+    console.warn("Failed to get scan image data (likely CORS), skipping crop bounds detection:", e)
+    scanCanvas.width = 0
+    scanCanvas.height = 0
+    return null
+  }
+  
+  const getPixel = (x, y) => {
+    const idx = (y * scanSize + x) * 4
+    return {
+      r: data[idx],
+      g: data[idx + 1],
+      b: data[idx + 2],
+      a: data[idx + 3]
+    }
+  }
+  
+  const corners = [
+    getPixel(0, 0),
+    getPixel(scanSize - 1, 0),
+    getPixel(0, scanSize - 1),
+    getPixel(scanSize - 1, scanSize - 1)
+  ]
+  
+  // Detect if background is transparent
+  const isTransparent = corners.every(c => c.a < 50)
+  
+  let bgColor = null
+  if (!isTransparent) {
+    const firstCorner = corners[0]
+    const similar = corners.every(c => 
+      Math.abs(c.r - firstCorner.r) < tolerance &&
+      Math.abs(c.g - firstCorner.g) < tolerance &&
+      Math.abs(c.b - firstCorner.b) < tolerance
+    )
+    if (similar) {
+      bgColor = firstCorner
+    }
+  }
+  
+  let minX = scanSize
+  let maxX = 0
+  let minY = scanSize
+  let maxY = 0
+  let found = false
+  
+  for (let y = 0; y < scanSize; y++) {
+    for (let x = 0; x < scanSize; x++) {
+      const idx = (y * scanSize + x) * 4
+      const r = data[idx]
+      const g = data[idx + 1]
+      const b = data[idx + 2]
+      const a = data[idx + 3]
+      
+      let isBg = false
+      if (isTransparent) {
+        isBg = a < 15
+      } else if (bgColor) {
+        const dist = Math.sqrt(
+          (r - bgColor.r) ** 2 +
+          (g - bgColor.g) ** 2 +
+          (b - bgColor.b) ** 2
+        )
+        isBg = dist < tolerance && a > 200
+      } else {
+        isBg = a < 15
+      }
+      
+      if (!isBg) {
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+        found = true
+      }
+    }
+  }
+  
+  scanCanvas.width = 0
+  scanCanvas.height = 0
+  
+  if (!found) return null
+  
+  const scaleX = img.width / scanSize
+  const scaleY = img.height / scanSize
+  
+  return {
+    x: Math.max(0, minX * scaleX),
+    y: Math.max(0, minY * scaleY),
+    width: Math.min(img.width, (maxX - minX + 1) * scaleX),
+    height: Math.min(img.height, (maxY - minY + 1) * scaleY)
+  }
+}
+
 // Yield to the browser event loop so GC can run and UI stays responsive
 const yieldToEventLoop = (ms = 50) => new Promise(r => setTimeout(r, ms))
 
@@ -130,48 +238,91 @@ export const ImageProcessorService = {
     // Get output format (to decide if we should initialize with white background)
     const format = settings.convert?.active ? (settings.convert.format || 'jpg') : 'jpg'
 
-    // If format is JPEG (jpg), initialize the canvas with a solid white background
-    // to avoid transparent areas rendering as black
-    if (format === 'jpg') {
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, targetWidth, targetHeight)
+    let cropBounds = null
+    if (settings.smartCrop?.active) {
+      cropBounds = detectProductBounds(img)
     }
 
-    // Fill background / Draw Image
-    if (settings.resize?.active && (settings.resize.mode === 'cover' || settings.resize.mode === 'contain')) {
-      const mode = settings.resize.mode
-      const bgMode = settings.resize.bgMode || 'solid' // 'solid', 'blur'
-      const bgColor = settings.resize.bgColor || '#ffffff'
-
-      const scale = mode === 'cover'
-        ? Math.max(targetWidth / originalWidth, targetHeight / originalHeight)
-        : Math.min(targetWidth / originalWidth, targetHeight / originalHeight)
-
-      const drawWidth = originalWidth * scale
-      const drawHeight = originalHeight * scale
-      const x = (targetWidth - drawWidth) / 2
-      const y = (targetHeight - drawHeight) / 2
-
-      if (mode === 'contain') {
-        if (bgMode === 'blur') {
-          // Draw blurred background
+    if (cropBounds) {
+      // Initialize background
+      if (settings.resize?.active && settings.resize.mode === 'contain') {
+        const bgMode = settings.resize.bgMode || 'solid'
+        const bgColor = settings.resize.bgColor || '#ffffff'
+        if (bgMode === 'solid') {
+          ctx.fillStyle = bgColor
+          ctx.fillRect(0, 0, targetWidth, targetHeight)
+        } else if (bgMode === 'blur') {
           ctx.save()
-          // Stretch original image to fill canvas as blurred background
           ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
           ctx.filter = 'blur(20px) brightness(80%)'
           ctx.drawImage(canvas, 0, 0)
           ctx.restore()
-        } else {
-          // Solid color background
-          ctx.fillStyle = bgColor
-          ctx.fillRect(0, 0, targetWidth, targetHeight)
         }
+      } else if (format === 'jpg') {
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, targetWidth, targetHeight)
       }
 
-      ctx.drawImage(img, x, y, drawWidth, drawHeight)
+      // Calculate centering and fitting scale
+      const fillRatio = (settings.smartCrop.fillPercent || 85) / 100
+      const maxW = targetWidth * fillRatio
+      const maxH = targetHeight * fillRatio
+      const scale = Math.min(maxW / cropBounds.width, maxH / cropBounds.height)
+
+      const drawW = cropBounds.width * scale
+      const drawH = cropBounds.height * scale
+      const drawX = (targetWidth - drawW) / 2
+      const drawY = (targetHeight - drawH) / 2
+
+      ctx.drawImage(
+        img,
+        cropBounds.x, cropBounds.y, cropBounds.width, cropBounds.height,
+        drawX, drawY, drawW, drawH
+      )
     } else {
-      // Normal draw (inside, fill, or un-resized)
-      ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+      // If format is JPEG (jpg), initialize the canvas with a solid white background
+      // to avoid transparent areas rendering as black
+      if (format === 'jpg') {
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, targetWidth, targetHeight)
+      }
+
+      // Fill background / Draw Image
+      if (settings.resize?.active && (settings.resize.mode === 'cover' || settings.resize.mode === 'contain')) {
+        const mode = settings.resize.mode
+        const bgMode = settings.resize.bgMode || 'solid' // 'solid', 'blur'
+        const bgColor = settings.resize.bgColor || '#ffffff'
+
+        const scale = mode === 'cover'
+          ? Math.max(targetWidth / originalWidth, targetHeight / originalHeight)
+          : Math.min(targetWidth / originalWidth, targetHeight / originalHeight)
+
+        const drawWidth = originalWidth * scale
+        const drawHeight = originalHeight * scale
+        const x = (targetWidth - drawWidth) / 2
+        const y = (targetHeight - drawHeight) / 2
+
+        if (mode === 'contain') {
+          if (bgMode === 'blur') {
+            // Draw blurred background
+            ctx.save()
+            // Stretch original image to fill canvas as blurred background
+            ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+            ctx.filter = 'blur(20px) brightness(80%)'
+            ctx.drawImage(canvas, 0, 0)
+            ctx.restore()
+          } else {
+            // Solid color background
+            ctx.fillStyle = bgColor
+            ctx.fillRect(0, 0, targetWidth, targetHeight)
+          }
+        }
+
+        ctx.drawImage(img, x, y, drawWidth, drawHeight)
+      } else {
+        // Normal draw (inside, fill, or un-resized)
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+      }
     }
 
     // 3. Watermarking

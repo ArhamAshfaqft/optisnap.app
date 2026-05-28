@@ -238,6 +238,7 @@ function App() {
   const [metadataSettings, setMetadataSettings] = useState(() => loadSettings('optisnap_metadata', { active: true, stripExif: true, stripGps: true, stripIptc: true }))
   const [backgroundRemovalActive, setBackgroundRemovalActive] = useState(() => loadSettings('optisnap_bg_removal', false))
   const [upscalerSettings, setUpscalerSettings] = useState(() => loadSettings('optisnap_upscaler', { active: false, scale: 2 }))
+  const [smartCropSettings, setSmartCropSettings] = useState(() => loadSettings('optisnap_smartcrop', { active: false, fillPercent: 85 }))
   const [filenameSuffix, setFilenameSuffix] = useState(() => localStorage.getItem('optisnap_suffix') || '_processed')
   const [selectedPresetId, setSelectedPresetId] = useState(null)
 
@@ -345,7 +346,8 @@ function App() {
     localStorage.setItem('optisnap_metadata', JSON.stringify(metadataSettings))
     localStorage.setItem('optisnap_bg_removal', JSON.stringify(backgroundRemovalActive))
     localStorage.setItem('optisnap_upscaler', JSON.stringify(upscalerSettings))
-  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, upscalerSettings])
+    localStorage.setItem('optisnap_smartcrop', JSON.stringify(smartCropSettings))
+  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, upscalerSettings, smartCropSettings])
 
   // Clean up ObjectURLs when images are cleared/removed
   useEffect(() => {
@@ -757,7 +759,8 @@ function App() {
         metadata: metadataSettings,
         suffix: filenameSuffix,
         bgRemoval: backgroundRemovalActive,
-        upscaler: upscalerSettings
+        upscaler: upscalerSettings,
+        smartCrop: smartCropSettings
       }
     }
     setPresets([...presets, newPreset])
@@ -781,6 +784,10 @@ function App() {
       setUpscalerSettings(preset.settings.upscaler)
     } else if (preset.settings.upscaleSettings) {
       setUpscalerSettings(preset.settings.upscaleSettings)
+    }
+
+    if (preset.settings.smartCrop) {
+      setSmartCropSettings(preset.settings.smartCrop)
     }
 
     // Load compression suffix
@@ -939,12 +946,13 @@ function App() {
     const settings = {
       resize: { ...resizeSettings, active: isDashboard ? resizeSettings.active : type === 'resize' },
       watermark: { ...watermarkSettings, active: isDashboard ? watermarkSettings.active : type === 'watermark' },
-      convert: { ...convertSettings, active: isDashboard ? convertSettings.active : (type === 'convert' || type === 'compress' || type === 'bg-removal' || type === 'upscaler') },
+      convert: { ...convertSettings, active: isDashboard ? convertSettings.active : (type === 'convert' || type === 'compress' || type === 'bg-removal' || type === 'upscaler' || type === 'smartcrop') },
       rename: { ...renameSettings, active: type === 'rename' || (isDashboard && renameSettings.active) },
       compress: { ...compressSettings, active: isDashboard ? compressSettings.active : type === 'compress' },
       metadata: { ...metadataSettings, active: isDashboard ? metadataSettings.active : type === 'metadata' },
       backgroundRemoval: { active: isDashboard ? backgroundRemovalActive : type === 'bg-removal' },
       upscaler: { active: isDashboard ? upscalerSettings.active : type === 'upscaler', scale: upscalerSettings.scale },
+      smartCrop: { active: isDashboard ? smartCropSettings.active : type === 'smartcrop', fillPercent: smartCropSettings.fillPercent },
       suffix: filenameSuffix
     }
 
@@ -1905,6 +1913,69 @@ function App() {
                     position: 'absolute',
                     top: '2px',
                     left: upscalerSettings.active ? '14px' : '2px',
+                    transition: 'left 0.2s'
+                  }}></div>
+                </div>
+              </div>
+
+              {/* Smart Crop Card */}
+              <div
+                onClick={() => handleToggleSmartCrop()}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: smartCropSettings.active ? 'var(--bg-card)' : 'transparent',
+                  border: smartCropSettings.active ? '1px solid var(--primary)' : '1px solid transparent',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: smartCropSettings.active ? 'var(--shadow-sm)' : 'none'
+                }}
+                className="master-control-item"
+              >
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', overflow: 'hidden' }}>
+                  <div style={{
+                    background: smartCropSettings.active ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0,0,0,0.03)',
+                    color: smartCropSettings.active ? 'var(--primary)' : 'var(--text-secondary)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Scaling size={16} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <h5 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Smart Crop</h5>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {smartCropSettings.active ? `Auto-Center (${smartCropSettings.fillPercent}%)` : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+                {/* Custom Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  background: smartCropSettings.active ? 'var(--primary)' : 'var(--border-color)',
+                  borderRadius: '10px',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                  marginLeft: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: smartCropSettings.active ? '14px' : '2px',
                     transition: 'left 0.2s'
                   }}></div>
                 </div>
@@ -3010,6 +3081,92 @@ function App() {
                 </button>
               </div>
             )}
+          </div>
+        )
+      case 'smartcrop':
+        return (
+          <div className="card">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>Smart Crop & Auto-Center</h2>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={smartCropSettings.active}
+                  onChange={e => setSmartCropSettings({ ...smartCropSettings, active: e.target.checked })}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+            <div style={{ opacity: smartCropSettings.active ? 1 : 0.4, pointerEvents: smartCropSettings.active ? 'auto' : 'none', transition: 'opacity 0.3s' }}>
+              <p className="helper-text" style={{ marginBottom: '20px' }}>
+                Automatically detect product boundaries, crop out empty space, and center the item. Essential for achieving marketplace compliance and visual consistency.
+              </p>
+
+              <div style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.02) 0%, rgba(139, 92, 246, 0.05) 100%)',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                marginBottom: '20px'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div style={{
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    color: 'var(--primary)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Scaling size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>
+                      E-commerce Subject Recognition
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      This algorithm runs 100% locally on your device's canvas. It scans the pixel alpha (transparency) channels and solid background colors (e.g. solid white borders) to calculate the precise boundary coordinates of your catalog product.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '25px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>
+                    Product Frame Occupancy
+                  </label>
+                  <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 600 }}>
+                    {smartCropSettings.fillPercent}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="60"
+                  max="95"
+                  step="5"
+                  value={smartCropSettings.fillPercent}
+                  onChange={e => setSmartCropSettings({ ...smartCropSettings, fillPercent: parseInt(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    accentColor: 'var(--primary)',
+                    cursor: 'pointer'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <span>60% (Large Border)</span>
+                  <span style={{ fontWeight: 600, color: 'var(--primary)' }}>85% (Amazon Standard)</span>
+                  <span>95% (Edge-to-edge)</span>
+                </div>
+              </div>
+
+              <button className="btn-primary" onClick={() => handleProcess('smartcrop')} disabled={isProcessing}>
+                Start Smart Crop Batch
+              </button>
+            </div>
           </div>
         )
       case 'watermark':
@@ -4589,6 +4746,9 @@ function App() {
           </button>
           <button className={currentTab === 'upscaler' ? 'active' : ''} onClick={() => setCurrentTab('upscaler')}>
             <TrendingUp size={18} /> AI Upscaler
+          </button>
+          <button className={currentTab === 'smartcrop' ? 'active' : ''} onClick={() => setCurrentTab('smartcrop')}>
+            <Scaling size={18} /> Smart Crop
           </button>
           <button className={currentTab === 'watermark' ? 'active' : ''} onClick={() => setCurrentTab('watermark')}>
             <Stamp size={18} /> Watermark
