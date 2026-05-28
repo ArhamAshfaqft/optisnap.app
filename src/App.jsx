@@ -237,11 +237,32 @@ function App() {
   const [compressSettings, setCompressSettings] = useState(() => loadSettings('optisnap_compress', { active: false, maxSizeMB: 1.0 }))
   const [metadataSettings, setMetadataSettings] = useState(() => loadSettings('optisnap_metadata', { active: true, stripExif: true, stripGps: true, stripIptc: true }))
   const [backgroundRemovalActive, setBackgroundRemovalActive] = useState(() => loadSettings('optisnap_bg_removal', false))
+  const [upscalerSettings, setUpscalerSettings] = useState(() => loadSettings('optisnap_upscaler', { active: false, scale: 2 }))
   const [filenameSuffix, setFilenameSuffix] = useState(() => localStorage.getItem('optisnap_suffix') || '_processed')
   const [selectedPresetId, setSelectedPresetId] = useState(null)
 
   const handleToggleBgRemoval = (targetValue) => {
     setBackgroundRemovalActive(targetValue)
+  }
+
+  const handleToggleUpscaler = (targetValue) => {
+    if (planTier === 'free') {
+      toast.info("AI Upscaler is a premium feature. Please activate OptiSnap Pro/Starter to use it.", {
+        description: "Go to Settings to enter your activation key.",
+        action: {
+          label: "Go to Settings",
+          onClick: () => setCurrentTab('settings')
+        }
+      })
+      return
+    }
+    
+    const initialScale = (planTier === 'starter' || planTier === 'starter_lifetime') ? 2 : upscalerSettings.scale
+    setUpscalerSettings({
+      ...upscalerSettings,
+      active: typeof targetValue === 'boolean' ? targetValue : !upscalerSettings.active,
+      scale: initialScale
+    })
   }
 
   // Listen for Supabase Authentication status
@@ -323,7 +344,8 @@ function App() {
     localStorage.setItem('optisnap_compress', JSON.stringify(compressSettings))
     localStorage.setItem('optisnap_metadata', JSON.stringify(metadataSettings))
     localStorage.setItem('optisnap_bg_removal', JSON.stringify(backgroundRemovalActive))
-  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive])
+    localStorage.setItem('optisnap_upscaler', JSON.stringify(upscalerSettings))
+  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, upscalerSettings])
 
   // Clean up ObjectURLs when images are cleared/removed
   useEffect(() => {
@@ -734,7 +756,8 @@ function App() {
         compress: compressSettings,
         metadata: metadataSettings,
         suffix: filenameSuffix,
-        bgRemoval: backgroundRemovalActive
+        bgRemoval: backgroundRemovalActive,
+        upscaler: upscalerSettings
       }
     }
     setPresets([...presets, newPreset])
@@ -753,6 +776,12 @@ function App() {
       : (preset.settings.backgroundRemoval ? preset.settings.backgroundRemoval.active : false)
     
     handleToggleBgRemoval(targetBgRemovalActive)
+
+    if (preset.settings.upscaler) {
+      setUpscalerSettings(preset.settings.upscaler)
+    } else if (preset.settings.upscaleSettings) {
+      setUpscalerSettings(preset.settings.upscaleSettings)
+    }
 
     // Load compression suffix
     if (preset.settings.compress) setCompressSettings(preset.settings.compress)
@@ -910,11 +939,12 @@ function App() {
     const settings = {
       resize: { ...resizeSettings, active: isDashboard ? resizeSettings.active : type === 'resize' },
       watermark: { ...watermarkSettings, active: isDashboard ? watermarkSettings.active : type === 'watermark' },
-      convert: { ...convertSettings, active: isDashboard ? convertSettings.active : (type === 'convert' || type === 'compress' || type === 'bg-removal') },
+      convert: { ...convertSettings, active: isDashboard ? convertSettings.active : (type === 'convert' || type === 'compress' || type === 'bg-removal' || type === 'upscaler') },
       rename: { ...renameSettings, active: type === 'rename' || (isDashboard && renameSettings.active) },
       compress: { ...compressSettings, active: isDashboard ? compressSettings.active : type === 'compress' },
       metadata: { ...metadataSettings, active: isDashboard ? metadataSettings.active : type === 'metadata' },
       backgroundRemoval: { active: isDashboard ? backgroundRemovalActive : type === 'bg-removal' },
+      upscaler: { active: isDashboard ? upscalerSettings.active : type === 'upscaler', scale: upscalerSettings.scale },
       suffix: filenameSuffix
     }
 
@@ -1812,6 +1842,69 @@ function App() {
                     position: 'absolute',
                     top: '2px',
                     left: backgroundRemovalActive ? '14px' : '2px',
+                    transition: 'left 0.2s'
+                  }}></div>
+                </div>
+              </div>
+
+              {/* AI Upscaler Card */}
+              <div
+                onClick={handleToggleUpscaler}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: upscalerSettings.active ? 'var(--bg-card)' : 'transparent',
+                  border: upscalerSettings.active ? '1px solid var(--primary)' : '1px solid transparent',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: upscalerSettings.active ? 'var(--shadow-sm)' : 'none'
+                }}
+                className="master-control-item"
+              >
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', overflow: 'hidden' }}>
+                  <div style={{
+                    background: upscalerSettings.active ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0,0,0,0.03)',
+                    color: upscalerSettings.active ? 'var(--primary)' : 'var(--text-secondary)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <TrendingUp size={16} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <h5 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>AI Upscaler</h5>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {upscalerSettings.active ? `Enabled (${upscalerSettings.scale}x)` : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+                {/* Custom Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  background: upscalerSettings.active ? 'var(--primary)' : 'var(--border-color)',
+                  borderRadius: '10px',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                  marginLeft: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: upscalerSettings.active ? '14px' : '2px',
                     transition: 'left 0.2s'
                   }}></div>
                 </div>
@@ -2754,6 +2847,169 @@ function App() {
                 Start Background Removal Batch
               </button>
             </div>
+          </div>
+        )
+      case 'upscaler':
+        return (
+          <div className="card">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>AI Image Upscaler</h2>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={upscalerSettings.active}
+                  disabled={planTier === 'free'}
+                  onChange={e => {
+                    if (planTier === 'free') {
+                      toast.error("Premium Feature", { description: "Please upgrade in settings to use the AI upscaler." });
+                      return;
+                    }
+                    setUpscalerSettings({ ...upscalerSettings, active: e.target.checked });
+                  }}
+                />
+                <span className="slider round"></span>
+              </label>
+            </div>
+            <div style={{ opacity: planTier === 'free' ? 0.5 : (upscalerSettings.active ? 1 : 0.4), pointerEvents: planTier === 'free' ? 'none' : (upscalerSettings.active ? 'auto' : 'none'), transition: 'opacity 0.3s' }}>
+              <p className="helper-text" style={{ marginBottom: '20px' }}>
+                Double or quadruple image resolution locally using neural networks. This eliminates blur and compression artifacts, making catalog photos crystal clear.
+              </p>
+
+              <div style={{
+                padding: '20px',
+                background: 'linear-gradient(135deg, rgba(134, 77, 226, 0.02) 0%, rgba(134, 77, 226, 0.05) 100%)',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                marginBottom: '20px'
+              }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div style={{
+                    background: 'rgba(134, 77, 226, 0.1)',
+                    color: 'var(--primary)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <TrendingUp size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600, color: 'var(--text-main)' }}>
+                      Local Neural Super-Resolution
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      OptiSnap executes the **Real-ESRGAN** deep learning model entirely on your GPU or CPU using WebGPU and WebAssembly. Your images never touch a server, meaning zero API cost and 100% privacy.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '25px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-main)' }}>Upscale Factor</h4>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => setUpscalerSettings({ ...upscalerSettings, scale: 2 })}
+                    style={{
+                      flex: 1,
+                      padding: '16px',
+                      borderRadius: '10px',
+                      background: upscalerSettings.scale === 2 ? 'rgba(139, 92, 246, 0.1)' : 'var(--input-bg)',
+                      border: upscalerSettings.scale === 2 ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                      color: upscalerSettings.scale === 2 ? 'var(--primary)' : 'var(--text-main)',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>2x Scale</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 400 }}>Starter & Pro Tiers</span>
+                  </button>
+
+                  <button
+                    disabled={planTier === 'starter' || planTier === 'starter_lifetime'}
+                    onClick={() => setUpscalerSettings({ ...upscalerSettings, scale: 4 })}
+                    style={{
+                      flex: 1,
+                      padding: '16px',
+                      borderRadius: '10px',
+                      background: upscalerSettings.scale === 4 ? 'rgba(139, 92, 246, 0.1)' : 'var(--input-bg)',
+                      border: upscalerSettings.scale === 4 ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                      color: upscalerSettings.scale === 4 ? 'var(--primary)' : 'var(--text-main)',
+                      fontWeight: 600,
+                      cursor: (planTier === 'starter' || planTier === 'starter_lifetime') ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      position: 'relative',
+                      opacity: (planTier === 'starter' || planTier === 'starter_lifetime') ? 0.6 : 1,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>4x Scale</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 400 }}>Pro Tier Only</span>
+                    {(planTier === 'starter' || planTier === 'starter_lifetime') && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '6px',
+                        right: '6px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#ef4444',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}>
+                        <Lock size={8} /> LOCKED
+                      </div>
+                    )}
+                  </button>
+                </div>
+                {(planTier === 'starter' || planTier === 'starter_lifetime') && (
+                  <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <AlertCircle size={12} /> You are on the Starter tier. <strong>4x Upscaling is locked</strong>. Upgrade to Pro in Settings to unlock.
+                  </p>
+                )}
+              </div>
+
+              <button className="btn-primary" onClick={() => handleProcess('upscaler')} disabled={isProcessing}>
+                Start AI Upscale Batch
+              </button>
+            </div>
+
+            {planTier === 'free' && (
+              <div style={{
+                marginTop: '15px',
+                padding: '20px',
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px solid rgba(239, 68, 68, 0.15)',
+                borderRadius: '12px',
+                textAlign: 'center'
+              }}>
+                <Lock size={32} style={{ color: '#ef4444', marginBottom: '10px' }} />
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>AI Upscaling Locked</h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  The browser-side neural super-resolution upscaler requires an active license key. Activate OptiSnap Starter or Pro to use this feature.
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={() => setCurrentTab('settings')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+                >
+                  <Key size={16} /> Enter Activation License
+                </button>
+              </div>
+            )}
           </div>
         )
       case 'watermark':
@@ -4330,6 +4586,9 @@ function App() {
           </button>
           <button className={currentTab === 'bg-removal' ? 'active' : ''} onClick={() => setCurrentTab('bg-removal')}>
             <Sparkles size={18} /> BG Removal
+          </button>
+          <button className={currentTab === 'upscaler' ? 'active' : ''} onClick={() => setCurrentTab('upscaler')}>
+            <TrendingUp size={18} /> AI Upscaler
           </button>
           <button className={currentTab === 'watermark' ? 'active' : ''} onClick={() => setCurrentTab('watermark')}>
             <Stamp size={18} /> Watermark

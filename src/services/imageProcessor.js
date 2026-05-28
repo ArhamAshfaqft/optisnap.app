@@ -1,6 +1,7 @@
 import { removeBackground } from '@imgly/background-removal'
 import imageCompression from 'browser-image-compression'
 import JSZip from 'jszip'
+import { UpscalerService } from './upscalerService'
 
 // Helper to load a file/blob as an HTMLImageElement
 const loadImage = (url) => {
@@ -53,6 +54,22 @@ export const ImageProcessorService = {
         currentBlob = await removeBackground(currentBlob)
       } catch (err) {
         console.error("Background removal error, skipping background removal:", err)
+      }
+    }
+
+    // 1.5. AI Upscaler (if enabled)
+    if (settings.upscaler?.active) {
+      if (onProgress) onProgress("AI Upscaling image...")
+      try {
+        currentBlob = await UpscalerService.upscaleImage(
+          currentBlob,
+          settings.upscaler.scale || 2,
+          (statusText) => {
+            if (onProgress) onProgress(statusText)
+          }
+        )
+      } catch (err) {
+        console.error("AI upscaler error, skipping upscale:", err)
       }
     }
 
