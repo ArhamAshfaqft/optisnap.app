@@ -36,7 +36,8 @@ import {
   Key,
   Search,
   RefreshCw,
-  EyeOff
+  EyeOff,
+  Layers
 } from 'lucide-react'
 import './assets/main.css'
 
@@ -239,6 +240,9 @@ function App() {
   const [backgroundRemovalActive, setBackgroundRemovalActive] = useState(() => loadSettings('optisnap_bg_removal', false))
   const [upscalerSettings, setUpscalerSettings] = useState(() => loadSettings('optisnap_upscaler', { active: false, scale: 2 }))
   const [smartCropSettings, setSmartCropSettings] = useState(() => loadSettings('optisnap_smartcrop', { active: false, fillPercent: 85 }))
+  const [shadowSettings, setShadowSettings] = useState(() => loadSettings('optisnap_shadow', { active: false, color: 'rgba(0, 0, 0, 0.18)', blur: 15, offsetX: 0, offsetY: 8 }))
+  const [borderSettings, setBorderSettings] = useState(() => loadSettings('optisnap_border', { active: false, color: '#e2e8f0', width: 4 }))
+  const [exportCsvActive, setExportCsvActive] = useState(() => loadSettings('optisnap_export_csv', false))
   const [filenameSuffix, setFilenameSuffix] = useState(() => localStorage.getItem('optisnap_suffix') || '_processed')
   const [selectedPresetId, setSelectedPresetId] = useState(null)
 
@@ -347,7 +351,10 @@ function App() {
     localStorage.setItem('optisnap_bg_removal', JSON.stringify(backgroundRemovalActive))
     localStorage.setItem('optisnap_upscaler', JSON.stringify(upscalerSettings))
     localStorage.setItem('optisnap_smartcrop', JSON.stringify(smartCropSettings))
-  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, upscalerSettings, smartCropSettings])
+    localStorage.setItem('optisnap_shadow', JSON.stringify(shadowSettings))
+    localStorage.setItem('optisnap_border', JSON.stringify(borderSettings))
+    localStorage.setItem('optisnap_export_csv', JSON.stringify(exportCsvActive))
+  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, upscalerSettings, smartCropSettings, shadowSettings, borderSettings, exportCsvActive])
 
   // Clean up ObjectURLs when images are cleared/removed
   useEffect(() => {
@@ -953,6 +960,8 @@ function App() {
       backgroundRemoval: { active: isDashboard ? backgroundRemovalActive : type === 'bg-removal' },
       upscaler: { active: isDashboard ? upscalerSettings.active : type === 'upscaler', scale: upscalerSettings.scale },
       smartCrop: { active: isDashboard ? smartCropSettings.active : type === 'smartcrop', fillPercent: smartCropSettings.fillPercent },
+      shadow: { ...shadowSettings, active: isDashboard ? shadowSettings.active : type === 'shadow-border' },
+      border: { ...borderSettings, active: isDashboard ? borderSettings.active : type === 'shadow-border' },
       suffix: filenameSuffix
     }
 
@@ -987,6 +996,33 @@ function App() {
           }
         }
       })
+
+      // Compile & download CSV Catalog Index if active
+      if (exportCsvActive && result.processedFiles && result.processedFiles.length > 0) {
+        const csvRows = [
+          ['Original Name', 'Output Name', 'Format', 'Size (KB)', 'Upload Folder Hint']
+        ]
+        result.processedFiles.forEach(f => {
+          csvRows.push([
+            f.originalName,
+            f.outputName,
+            f.format.toUpperCase(),
+            Math.round(f.size / 1024),
+            'images/'
+          ])
+        })
+        const csvContent = csvRows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n")
+        const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const csvUrl = URL.createObjectURL(csvBlob)
+        const csvAnchor = document.createElement('a')
+        csvAnchor.href = csvUrl
+        csvAnchor.download = `optisnap-catalog-index-${batchTimestamp}.csv`
+        document.body.appendChild(csvAnchor)
+        csvAnchor.click()
+        document.body.removeChild(csvAnchor)
+        setTimeout(() => URL.revokeObjectURL(csvUrl), 2000)
+        toast.success("Catalog CSV index exported successfully!")
+      }
 
       // Update productivity stats
       setStats(prev => {
@@ -3170,6 +3206,137 @@ function App() {
             </div>
           </div>
         )
+      case 'shadow-border':
+        return (
+          <div className="card">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>Shadows & Borders</h2>
+            </div>
+            
+            <p className="helper-text" style={{ marginBottom: '20px' }}>
+              Add professional depth and frame containment styles. Product drop shadows work best on transparent cutouts.
+            </p>
+
+            {/* Drop Shadow Controls */}
+            <div style={{
+              padding: '16px',
+              background: 'var(--bg-main)',
+              borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 600 }}>Product Drop Shadow</h4>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={shadowSettings.active}
+                    onChange={e => setShadowSettings({ ...shadowSettings, active: e.target.checked })}
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+              
+              {shadowSettings.active && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12px' }}>Shadow Blur Radius</label>
+                      <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600 }}>{shadowSettings.blur}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="50"
+                      step="2"
+                      value={shadowSettings.blur}
+                      onChange={e => setShadowSettings({ ...shadowSettings, blur: parseInt(e.target.value, 10) })}
+                      style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12px' }}>Vertical Offset (Y-axis)</label>
+                      <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600 }}>{shadowSettings.offsetY}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-20"
+                      max="30"
+                      step="2"
+                      value={shadowSettings.offsetY}
+                      onChange={e => setShadowSettings({ ...shadowSettings, offsetY: parseInt(e.target.value, 10) })}
+                      style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Canvas Border Controls */}
+            <div style={{
+              padding: '16px',
+              background: 'var(--bg-main)',
+              borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 600 }}>Outer Canvas Border</h4>
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={borderSettings.active}
+                    onChange={e => setBorderSettings({ ...borderSettings, active: e.target.checked })}
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+
+              {borderSettings.active && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '12px' }}>Border Width</label>
+                      <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600 }}>{borderSettings.width}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="20"
+                      value={borderSettings.width}
+                      onChange={e => setBorderSettings({ ...borderSettings, width: parseInt(e.target.value, 10) })}
+                      style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '12px', display: 'block', marginBottom: '6px' }}>Border Color</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={borderSettings.color}
+                        onChange={e => setBorderSettings({ ...borderSettings, color: e.target.value })}
+                        style={{ width: '40px', height: '30px', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', padding: 0 }}
+                      />
+                      <input
+                        type="text"
+                        value={borderSettings.color}
+                        onChange={e => setBorderSettings({ ...borderSettings, color: e.target.value })}
+                        style={{ flex: 1, padding: '6px 10px', fontSize: '12px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'var(--bg-card)', color: 'var(--text-main)' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button className="btn-primary" onClick={() => handleProcess('shadow-border')} disabled={isProcessing}>
+              Apply Frame Styling Batch
+            </button>
+          </div>
+        )
       case 'watermark':
         return (
           <div className="card">
@@ -4269,6 +4436,22 @@ function App() {
                   </div>
                 </div>
               )}
+
+              {/* CSV Exporter preference toggle */}
+              <div className="form-group" style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)' }}>Catalog CSV Exporter</label>
+                  <p className="helper-text" style={{ marginTop: '4px', maxWidth: '400px' }}>Automatically compile and download a Shopify/Etsy compatible catalog CSV mapping processed files, formats, and sizes.</p>
+                </div>
+                <label className="switch">
+                  <input 
+                    type="checkbox" 
+                    checked={exportCsvActive} 
+                    onChange={e => setExportCsvActive(e.target.checked)} 
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
             </div>
 
             {/* Saved Presets */}
@@ -4752,6 +4935,9 @@ function App() {
           </button>
           <button className={currentTab === 'smartcrop' ? 'active' : ''} onClick={() => setCurrentTab('smartcrop')}>
             <Scaling size={18} /> Smart Crop
+          </button>
+          <button className={currentTab === 'shadow-border' ? 'active' : ''} onClick={() => setCurrentTab('shadow-border')}>
+            <Layers size={18} /> Shadows & Borders
           </button>
           <button className={currentTab === 'watermark' ? 'active' : ''} onClick={() => setCurrentTab('watermark')}>
             <Stamp size={18} /> Watermark

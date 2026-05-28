@@ -274,11 +274,25 @@ export const ImageProcessorService = {
       const drawX = (targetWidth - drawW) / 2
       const drawY = (targetHeight - drawH) / 2
 
+      // Configure shadow if active
+      const applyShadow = settings.shadow?.active
+      if (applyShadow) {
+        ctx.save()
+        ctx.shadowColor = settings.shadow.color || 'rgba(0, 0, 0, 0.18)'
+        ctx.shadowBlur = parseInt(settings.shadow.blur) || 15
+        ctx.shadowOffsetX = parseInt(settings.shadow.offsetX) || 0
+        ctx.shadowOffsetY = parseInt(settings.shadow.offsetY) || 8
+      }
+
       ctx.drawImage(
         img,
         cropBounds.x, cropBounds.y, cropBounds.width, cropBounds.height,
         drawX, drawY, drawW, drawH
       )
+
+      if (applyShadow) {
+        ctx.restore()
+      }
     } else {
       // If format is JPEG (jpg), initialize the canvas with a solid white background
       // to avoid transparent areas rendering as black
@@ -318,10 +332,38 @@ export const ImageProcessorService = {
           }
         }
 
+        // Configure shadow if active
+        const applyShadow = settings.shadow?.active
+        if (applyShadow) {
+          ctx.save()
+          ctx.shadowColor = settings.shadow.color || 'rgba(0, 0, 0, 0.18)'
+          ctx.shadowBlur = parseInt(settings.shadow.blur) || 15
+          ctx.shadowOffsetX = parseInt(settings.shadow.offsetX) || 0
+          ctx.shadowOffsetY = parseInt(settings.shadow.offsetY) || 8
+        }
+
         ctx.drawImage(img, x, y, drawWidth, drawHeight)
+
+        if (applyShadow) {
+          ctx.restore()
+        }
       } else {
         // Normal draw (inside, fill, or un-resized)
+        // Configure shadow if active
+        const applyShadow = settings.shadow?.active
+        if (applyShadow) {
+          ctx.save()
+          ctx.shadowColor = settings.shadow.color || 'rgba(0, 0, 0, 0.18)'
+          ctx.shadowBlur = parseInt(settings.shadow.blur) || 15
+          ctx.shadowOffsetX = parseInt(settings.shadow.offsetX) || 0
+          ctx.shadowOffsetY = parseInt(settings.shadow.offsetY) || 8
+        }
+
         ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+
+        if (applyShadow) {
+          ctx.restore()
+        }
       }
     }
 
@@ -397,6 +439,21 @@ export const ImageProcessorService = {
         }
       }
 
+      ctx.restore()
+    }
+
+    // 3.5. Frame Border Drawing
+    if (settings.border?.active) {
+      ctx.save()
+      ctx.strokeStyle = settings.border.color || '#e2e8f0'
+      ctx.lineWidth = parseInt(settings.border.width) || 4
+      const halfWidth = ctx.lineWidth / 2
+      ctx.strokeRect(
+        halfWidth, 
+        halfWidth, 
+        targetWidth - ctx.lineWidth, 
+        targetHeight - ctx.lineWidth
+      )
       ctx.restore()
     }
 
@@ -522,6 +579,7 @@ export const ImageProcessorService = {
     const totalChunks = Math.ceil(totalFiles / chunkSize)
     let totalProcessed = 0
     const totalErrors = []
+    const processedFiles = []
 
     for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
       const chunkStart = chunkIdx * chunkSize
@@ -574,6 +632,12 @@ export const ImageProcessorService = {
           }
 
           zip.file(outputFilename, processedBlob)
+          processedFiles.push({
+            originalName: file.name,
+            outputName: outputFilename,
+            format: format,
+            size: processedBlob.size
+          })
           chunkProcessed++
           totalProcessed++
 
@@ -630,6 +694,6 @@ export const ImageProcessorService = {
       localStorage.removeItem('optisnap_batch_progress')
     } catch (e) {}
 
-    return { totalProcessed, errors: totalErrors, totalChunks }
+    return { totalProcessed, errors: totalErrors, totalChunks, processedFiles }
   }
 }
