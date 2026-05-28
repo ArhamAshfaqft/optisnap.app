@@ -2323,6 +2323,136 @@ function App() {
                   }}></div>
                 </div>
               </div>
+
+              {/* Shadows & Borders Card */}
+              <div
+                onClick={() => {
+                  const targetState = !(shadowSettings.active || borderSettings.active);
+                  setShadowSettings({ ...shadowSettings, active: targetState });
+                  setBorderSettings({ ...borderSettings, active: targetState });
+                }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: (shadowSettings.active || borderSettings.active) ? 'var(--bg-card)' : 'transparent',
+                  border: (shadowSettings.active || borderSettings.active) ? '1px solid var(--primary)' : '1px solid transparent',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: (shadowSettings.active || borderSettings.active) ? 'var(--shadow-sm)' : 'none'
+                }}
+                className="master-control-item"
+              >
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', overflow: 'hidden' }}>
+                  <div style={{
+                    background: (shadowSettings.active || borderSettings.active) ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0,0,0,0.03)',
+                    color: (shadowSettings.active || borderSettings.active) ? 'var(--primary)' : 'var(--text-secondary)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Layers size={16} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <h5 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Shadows & Borders</h5>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {shadowSettings.active && borderSettings.active ? 'Shadow & Border Active' : shadowSettings.active ? 'Shadow Active' : borderSettings.active ? 'Border Active' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+                {/* Custom Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  background: (shadowSettings.active || borderSettings.active) ? 'var(--primary)' : 'var(--border-color)',
+                  borderRadius: '10px',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                  marginLeft: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: (shadowSettings.active || borderSettings.active) ? '14px' : '2px',
+                    transition: 'left 0.2s'
+                  }}></div>
+                </div>
+              </div>
+
+              {/* Output Format Card */}
+              <div
+                onClick={() => setConvertSettings({ ...convertSettings, active: !convertSettings.active })}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: convertSettings.active ? 'var(--bg-card)' : 'transparent',
+                  border: convertSettings.active ? '1px solid var(--primary)' : '1px solid transparent',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: convertSettings.active ? 'var(--shadow-sm)' : 'none'
+                }}
+                className="master-control-item"
+              >
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', overflow: 'hidden' }}>
+                  <div style={{
+                    background: convertSettings.active ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0,0,0,0.03)',
+                    color: convertSettings.active ? 'var(--primary)' : 'var(--text-secondary)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <RefreshCw size={16} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <h5 style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Output Format</h5>
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {convertSettings.active ? `Format: ${convertSettings.format.toUpperCase()}` : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+                {/* Custom Toggle Switch */}
+                <div style={{
+                  width: '28px',
+                  height: '16px',
+                  background: convertSettings.active ? 'var(--primary)' : 'var(--border-color)',
+                  borderRadius: '10px',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                  flexShrink: 0,
+                  marginLeft: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    background: 'white',
+                    borderRadius: '50%',
+                    position: 'absolute',
+                    top: '2px',
+                    left: convertSettings.active ? '14px' : '2px',
+                    transition: 'left 0.2s'
+                  }}></div>
+                </div>
+              </div>
             </div>
 
             {images.length > 0 && backgroundRemovalActive && convertSettings.format === 'jpg' && (
