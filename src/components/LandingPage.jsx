@@ -120,9 +120,9 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
   // FOMO states
   const [timeLeft, setTimeLeft] = useState('')
   const [stats, setStats] = useState({
-    images: 241852,
-    activeUsers: 112,
-    hoursSaved: 7458
+    images: 42890,
+    activeUsers: 18,
+    hoursSaved: 1420
   })
   const [weeklyImages, setWeeklyImages] = useState(100)
 
@@ -269,9 +269,9 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
     const interval = setInterval(() => {
       setStats(prev => {
         const imgInc = Math.floor(Math.random() * 2) + 1
-        const userDiff = Math.floor(Math.random() * 5) - 2
-        const nextUsers = Math.min(Math.max(prev.activeUsers + userDiff, 95), 130)
-        const hoursInc = Math.random() > 0.7 ? 1 : 0
+        const userDiff = Math.floor(Math.random() * 3) - 1
+        const nextUsers = Math.min(Math.max(prev.activeUsers + userDiff, 14), 28)
+        const hoursInc = Math.random() > 0.85 ? 1 : 0
         
         return {
           images: prev.images + imgInc,
