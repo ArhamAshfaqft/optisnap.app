@@ -1,4 +1,4 @@
-import { removeBackground } from '@imgly/background-removal'
+import { removeBackground, preload } from '@imgly/background-removal'
 import imageCompression from 'browser-image-compression'
 import JSZip from 'jszip'
 import { UpscalerService } from './upscalerService'
@@ -147,6 +147,27 @@ const detectProductBounds = (img, tolerance = 15) => {
 const yieldToEventLoop = (ms = 50) => new Promise(r => setTimeout(r, ms))
 
 export const ImageProcessorService = {
+  /**
+   * Preload AI background removal model in background.
+   */
+  async preloadBgRemoval(model = 'isnet_quint8', onProgress) {
+    try {
+      const config = {
+        model,
+        progress: (key, current, total) => {
+          const percentage = Math.round((current / total) * 100)
+          const friendlyKey = key.split('/').pop() || 'model'
+          if (onProgress) {
+            onProgress(`Downloading AI Model (${friendlyKey}): ${percentage}%`)
+          }
+        }
+      }
+      await preload(config)
+    } catch (err) {
+      console.warn("Failed to preload AI background removal model:", err)
+    }
+  },
+
   /**
    * Process a single image file client-side.
    * Includes explicit canvas memory cleanup to prevent GPU/heap memory accumulation.

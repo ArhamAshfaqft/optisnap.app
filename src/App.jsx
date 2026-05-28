@@ -247,9 +247,35 @@ function App() {
   const [filenameSuffix, setFilenameSuffix] = useState(() => localStorage.getItem('optisnap_suffix') || '_processed')
   const [selectedPresetId, setSelectedPresetId] = useState(null)
 
+  const [bgPreloadStatus, setBgPreloadStatus] = useState(null)
+
   const handleToggleBgRemoval = (targetValue) => {
     setBackgroundRemovalActive(targetValue)
   }
+
+  useEffect(() => {
+    let active = true
+    if (backgroundRemovalActive) {
+      setBgPreloadStatus("Initializing model preload...")
+      ImageProcessorService.preloadBgRemoval(bgRemovalModel, (statusText) => {
+        if (active) setBgPreloadStatus(statusText)
+      }).then(() => {
+        if (active) {
+          setBgPreloadStatus("AI Model loaded and ready!")
+          setTimeout(() => {
+            if (active) setBgPreloadStatus(null)
+          }, 4000)
+        }
+      }).catch(() => {
+        if (active) setBgPreloadStatus(null)
+      })
+    } else {
+      setBgPreloadStatus(null)
+    }
+    return () => {
+      active = false
+    }
+  }, [backgroundRemovalActive, bgRemovalModel])
 
   const handleToggleUpscaler = (targetValue) => {
     if (planTier === 'free') {
@@ -2926,6 +2952,34 @@ function App() {
                   The first run downloads the selected model to your browser cache. Larger models require faster internet and more RAM/CPU.
                 </p>
               </div>
+
+              {bgPreloadStatus && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: 'rgba(139, 92, 246, 0.08)',
+                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
+                  color: 'var(--text-main)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  {bgPreloadStatus.includes("ready") ? (
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }}></div>
+                  ) : (
+                    <div className="animate-spin" style={{
+                      width: '14px',
+                      height: '14px',
+                      border: '2px solid rgba(139, 92, 246, 0.3)',
+                      borderTop: '2px solid var(--primary)',
+                      borderRadius: '50%'
+                    }}></div>
+                  )}
+                  <span style={{ fontWeight: 500 }}>{bgPreloadStatus}</span>
+                </div>
+              )}
 
               {backgroundRemovalActive && convertSettings.format === 'jpg' && (
                 <div style={{
