@@ -238,6 +238,7 @@ function App() {
   const [compressSettings, setCompressSettings] = useState(() => loadSettings('optisnap_compress', { active: false, maxSizeMB: 1.0 }))
   const [metadataSettings, setMetadataSettings] = useState(() => loadSettings('optisnap_metadata', { active: true, stripExif: true, stripGps: true, stripIptc: true }))
   const [backgroundRemovalActive, setBackgroundRemovalActive] = useState(() => loadSettings('optisnap_bg_removal', false))
+  const [bgRemovalModel, setBgRemovalModel] = useState(() => localStorage.getItem('optisnap_bg_removal_model') || 'isnet_quint8')
   const [upscalerSettings, setUpscalerSettings] = useState(() => loadSettings('optisnap_upscaler', { active: false, scale: 2 }))
   const [smartCropSettings, setSmartCropSettings] = useState(() => loadSettings('optisnap_smartcrop', { active: false, fillPercent: 85 }))
   const [shadowSettings, setShadowSettings] = useState(() => loadSettings('optisnap_shadow', { active: false, color: 'rgba(0, 0, 0, 0.18)', blur: 15, offsetX: 0, offsetY: 8 }))
@@ -349,12 +350,13 @@ function App() {
     localStorage.setItem('optisnap_compress', JSON.stringify(compressSettings))
     localStorage.setItem('optisnap_metadata', JSON.stringify(metadataSettings))
     localStorage.setItem('optisnap_bg_removal', JSON.stringify(backgroundRemovalActive))
+    localStorage.setItem('optisnap_bg_removal_model', bgRemovalModel)
     localStorage.setItem('optisnap_upscaler', JSON.stringify(upscalerSettings))
     localStorage.setItem('optisnap_smartcrop', JSON.stringify(smartCropSettings))
     localStorage.setItem('optisnap_shadow', JSON.stringify(shadowSettings))
     localStorage.setItem('optisnap_border', JSON.stringify(borderSettings))
     localStorage.setItem('optisnap_export_csv', JSON.stringify(exportCsvActive))
-  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, upscalerSettings, smartCropSettings, shadowSettings, borderSettings, exportCsvActive])
+  }, [filenameSuffix, resizeSettings, watermarkSettings, renameSettings, convertSettings, compressSettings, metadataSettings, backgroundRemovalActive, bgRemovalModel, upscalerSettings, smartCropSettings, shadowSettings, borderSettings, exportCsvActive])
 
   // Clean up ObjectURLs when images are cleared/removed
   useEffect(() => {
@@ -957,7 +959,7 @@ function App() {
       rename: { ...renameSettings, active: type === 'rename' || (isDashboard && renameSettings.active) },
       compress: { ...compressSettings, active: isDashboard ? compressSettings.active : type === 'compress' },
       metadata: { ...metadataSettings, active: isDashboard ? metadataSettings.active : type === 'metadata' },
-      backgroundRemoval: { active: isDashboard ? backgroundRemovalActive : type === 'bg-removal' },
+      backgroundRemoval: { active: isDashboard ? backgroundRemovalActive : type === 'bg-removal', model: bgRemovalModel },
       upscaler: { active: isDashboard ? upscalerSettings.active : type === 'upscaler', scale: upscalerSettings.scale },
       smartCrop: { active: isDashboard ? smartCropSettings.active : type === 'smartcrop', fillPercent: smartCropSettings.fillPercent },
       shadow: { ...shadowSettings, active: isDashboard ? shadowSettings.active : type === 'shadow-border' },
@@ -2906,6 +2908,23 @@ function App() {
                 }}>
                   <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>💡 Performance Guidelines:</span> Best suited for catalog shots, products, and clean backgrounds. For ultra-complex details (such as models with fine hair or complex textures), server-based pipelines may produce sharper extractions, but require recurring per-image fees.
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
+                  AI Model Size & Speed
+                </label>
+                <select 
+                  value={bgRemovalModel} 
+                  onChange={e => setBgRemovalModel(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="isnet_quint8">Fast / Quantized (Recommended - ~40 MB download, faster processing)</option>
+                  <option value="isnet_fp16">Balanced / Standard (Higher quality, slower - ~80 MB download)</option>
+                </select>
+                <p className="helper-text" style={{ marginTop: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  The first run downloads the selected model to your browser cache. Larger models require faster internet and more RAM/CPU.
+                </p>
               </div>
 
               {backgroundRemovalActive && convertSettings.format === 'jpg' && (

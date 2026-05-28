@@ -157,9 +157,19 @@ export const ImageProcessorService = {
 
     // 1. Background Removal (if enabled)
     if (settings.backgroundRemoval?.active) {
-      if (onProgress) onProgress("Removing background...")
+      if (onProgress) onProgress("Removing background (running local AI model)...")
       try {
-        currentBlob = await removeBackground(currentBlob)
+        const config = {
+          model: settings.backgroundRemoval.model || 'isnet_quint8',
+          progress: (key, current, total) => {
+            const percentage = Math.round((current / total) * 100)
+            const friendlyKey = key.split('/').pop() || 'model'
+            if (onProgress) {
+              onProgress(`Downloading AI Model (${friendlyKey}): ${percentage}%`)
+            }
+          }
+        }
+        currentBlob = await removeBackground(currentBlob, config)
       } catch (err) {
         console.error("Background removal error, skipping background removal:", err)
       }
