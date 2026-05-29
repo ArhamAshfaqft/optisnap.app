@@ -1563,6 +1563,10 @@ function App() {
         email: userEmail,
         name: 'Optisnap',
         licenses: 1,
+        // When user selects lifetime, disable upsell toggles so the checkout
+        // opens directly on the one-time payment view instead of showing
+        // monthly with a "Pay Once" toggle that the user has to flip manually.
+        ...(cycle === 'lifetime' ? { hide_upsells: true } : {}),
         success: (purchaseData) => {
           console.log('Purchase success:', purchaseData)
           toast.success("Purchase completed successfully! Refreshing details...")
