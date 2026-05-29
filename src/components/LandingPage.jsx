@@ -1335,14 +1335,14 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
               gap: '16px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Manual Photoshop Workflow:</span>
-                <span style={{ fontWeight: 600, color: '#ef4444', textDecoration: 'line-through' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Manual Photoshop:</span>
+                <span style={{ fontWeight: 600, color: '#ef4444', textDecoration: 'line-through', whiteSpace: 'nowrap' }}>
                   {Math.round(((weeklyImages * 3.5) / 60) * 10) / 10} hours / wk
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>OptiSnap Engine:</span>
-                <span style={{ fontWeight: 700, color: '#22c55e' }}>
+                <span style={{ fontWeight: 700, color: '#22c55e', whiteSpace: 'nowrap' }}>
                   {Math.round(((weeklyImages * 2) / 60) * 10) / 10} mins / wk
                 </span>
               </div>
