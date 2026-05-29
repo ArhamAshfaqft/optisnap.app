@@ -4939,6 +4939,8 @@ function App() {
           session={session}
           theme={theme}
           toggleTheme={toggleTheme}
+          planTier={planTier}
+          isPro={planTier !== 'free'}
         />
       </>
     )

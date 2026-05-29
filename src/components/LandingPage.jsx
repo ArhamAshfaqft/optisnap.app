@@ -111,7 +111,7 @@ const SIMULATED_PURCHASES = [
   { name: "Ryan P.", location: "San Francisco, USA", plan: "Pro Lifetime Deal", time: "1 day ago" }
 ];
 
-export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }) {
+export default function LandingPage({ onLaunchApp, session, theme, toggleTheme, planTier = 'free', isPro = false }) {
   const [activeFaq, setActiveFaq] = useState(null)
   const [billingCycle, setBillingCycle] = useState('monthly') // 'monthly' or 'lifetime'
   const [notification, setNotification] = useState(null)
@@ -200,6 +200,9 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
   const [exitTimeLeft, setExitTimeLeft] = useState(600) // 10 minutes
 
   useEffect(() => {
+    // If the user has already upgraded/is pro, do not track exit intent
+    if (isPro || planTier !== 'free') return
+
     const handleMouseLeave = (e) => {
       if (e.clientY < 5 && !exitIntentTriggered) {
         setShowExitIntent(true)
@@ -218,7 +221,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
     return () => {
       document.removeEventListener('mouseleave', handleMouseLeave)
     }
-  }, [exitIntentTriggered])
+  }, [exitIntentTriggered, isPro, planTier])
 
   useEffect(() => {
     if (!showExitIntent || exitTimeLeft <= 0) return
