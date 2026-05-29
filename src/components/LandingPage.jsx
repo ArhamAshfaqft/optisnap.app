@@ -540,7 +540,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </header>
 
       {/* Hero Section */}
-      <section style={{
+      <section className="hero-section" style={{
         padding: '100px 40px 60px 40px',
         textAlign: 'center',
         position: 'relative',
@@ -594,7 +594,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
           Stop spending 4 hours in Photoshop per listing batch. OptiSnap removes backgrounds, compresses to 85% smaller files, auto-crops to Amazon specs, and watermarks—all locally, in one click. Built for Etsy, Shopify & Amazon sellers who value speed and privacy.
         </p>
 
-        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+        <div className="hero-buttons" style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
           <button className="btn-primary" onClick={() => onLaunchApp('dashboard')} style={{ padding: '16px 32px', fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
             Launch Workspace Free <ArrowRight size={16} />
           </button>
@@ -622,7 +622,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Hero Mockup Showcase */}
-      <section style={{ padding: '0 40px 60px 40px', maxWidth: '1150px', margin: '0 auto', textAlign: 'center' }}>
+      <section className="mockup-section" style={{ padding: '0 40px 60px 40px', maxWidth: '1150px', margin: '0 auto', textAlign: 'center' }}>
         <div style={{
           background: 'var(--bg-card)',
           borderRadius: '16px',
@@ -713,7 +713,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         </div>
       </section>
 
-      {/* CSS Keyframe Styles for Pulse Animation */}
+      {/* CSS Keyframe Styles for Pulse Animation & Mobile Responsiveness */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes pulse-green {
           0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
@@ -723,15 +723,181 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
         .pulse-dot {
           animation: pulse-green 2.2s infinite ease-in-out;
         }
-        @media (max-width: 640px) {
+        
+        /* Mobile & Tablet Responsiveness Overrides */
+        @media (max-width: 768px) {
+          .navbar-container {
+            padding: 12px 16px !important;
+          }
+          .navbar-container nav {
+            display: none !important; /* Hide navigation links on mobile */
+          }
+          
+          .hero-section {
+            padding: 40px 16px 30px 16px !important;
+          }
+          .hero-section h1 {
+            font-size: 28px !important;
+            line-height: 1.3 !important;
+            margin: 16px 0 12px 0 !important;
+          }
+          .hero-section p {
+            font-size: 14px !important;
+            margin-bottom: 24px !important;
+          }
+          .hero-buttons {
+            flex-direction: column !important;
+            gap: 12px !important;
+            align-items: stretch !important;
+          }
+          .hero-buttons a, .hero-buttons button {
+            padding: 14px 20px !important;
+            font-size: 14px !important;
+            justify-content: center !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          
+          .mockup-section {
+            padding: 0 16px 30px 16px !important;
+          }
+          #hero-img-placeholder {
+            height: 200px !important;
+          }
+          
+          .stats-section {
+            padding: 10px 16px 30px 16px !important;
+          }
+          .stats-section > div {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+            padding: 20px 16px !important;
+          }
           .stats-divider {
             display: none !important;
+          }
+          
+          .features-section {
+            padding: 40px 16px !important;
+          }
+          .features-section h2 {
+            font-size: 22px !important;
+          }
+          .features-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          
+          .how-it-works-section {
+            padding: 40px 16px !important;
+          }
+          .how-it-works-section h2 {
+            font-size: 22px !important;
+          }
+          .steps-container {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+          
+          .testimonials-section {
+            padding: 40px 0 !important;
+          }
+          .testimonials-section h2 {
+            font-size: 22px !important;
+          }
+          
+          .roi-section {
+            padding: 40px 16px !important;
+          }
+          .roi-section h2 {
+            font-size: 20px !important;
+          }
+          .roi-section > div {
+            padding: 24px 16px !important;
+          }
+          .calc-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+          
+          .pricing-section {
+            padding: 40px 16px !important;
+          }
+          .pricing-section h2 {
+            font-size: 22px !important;
+          }
+          .pricing-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+          .pricing-grid > div {
+            padding: 24px 16px !important;
+          }
+          
+          .faq-section {
+            padding: 40px 16px !important;
+          }
+          .faq-section h2 {
+            font-size: 22px !important;
+          }
+          
+          .bottom-cta-section {
+            padding: 40px 16px !important;
+          }
+          .bottom-cta-section > div {
+            padding: 40px 16px !important;
+            border-radius: 16px !important;
+          }
+          .bottom-cta-section h2 {
+            font-size: 24px !important;
+            line-height: 1.3 !important;
+          }
+          .bottom-cta-section p {
+            font-size: 14px !important;
+            margin-bottom: 24px !important;
+          }
+          
+          .footer-section {
+            padding: 40px 16px 20px 16px !important;
+          }
+          .footer-links-grid {
+            grid-template-columns: 1fr !important;
+            gap: 30px !important;
+            padding-bottom: 40px !important;
+          }
+          .footer-bottom {
+            flex-direction: column !important;
+            gap: 12px !important;
+            text-align: center !important;
+            margin-top: 20px !important;
+          }
+          
+          .won-discount-banner {
+            left: 16px !important;
+            right: 16px !important;
+            bottom: 16px !important;
+            justify-content: space-between !important;
+            padding: 12px 16px !important;
+          }
+          
+          .floating-gift-trigger {
+            bottom: 80px !important;
+            right: 16px !important;
+          }
+          
+          .modal-card {
+            padding: 24px 16px !important;
+            border-radius: 16px !important;
+          }
+          .wheel-container {
+            width: 220px !important;
+            height: 220px !important;
           }
         }
       `}} />
 
       {/* Live Stats / Processing Milestones (Option 3) */}
-      <section style={{
+      <section className="stats-section" style={{
         padding: '20px 40px 60px 40px',
         maxWidth: '1000px',
         margin: '0 auto',
@@ -804,7 +970,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Features Grid Section */}
-      <section id="features" style={{
+      <section id="features" className="features-section" style={{
         padding: '80px 40px',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-color)',
@@ -818,7 +984,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
             </p>
           </div>
 
-          <div style={{
+          <div className="features-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: '30px'
@@ -852,7 +1018,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* How it Works Section */}
-      <section id="how-it-works" style={{
+      <section id="how-it-works" className="how-it-works-section" style={{
         padding: '80px 0',
         background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border-color)',
@@ -937,7 +1103,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" style={{
+      <section id="testimonials" className="testimonials-section" style={{
         padding: '80px 0',
         width: '100%',
         overflowX: 'hidden',
@@ -1077,7 +1243,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Loss Aversion / Time-Saved ROI Calculator (Option 4) */}
-      <section style={{
+      <section className="roi-section" style={{
         padding: '60px 40px',
         maxWidth: '900px',
         margin: '0 auto',
@@ -1205,7 +1371,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Pricing Matrix (AppSumo Lifetime Deal) */}
-      <section id="pricing" style={{
+      <section id="pricing" className="pricing-section" style={{
         padding: '80px 40px',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-color)',
@@ -1420,7 +1586,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Accordion FAQ Section */}
-      <section id="faq" style={{ padding: '80px 40px', maxWidth: '800px', margin: '0 auto' }}>
+      <section id="faq" className="faq-section" style={{ padding: '80px 40px', maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '50px' }}>
           <h2 style={{ marginBottom: '12px' }}>Still Have Doubts? We Get It.</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Here are the questions every seller asks before switching from Photoshop.</p>
@@ -1474,7 +1640,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* CTA Banner Section */}
-      <section style={{
+      <section className="bottom-cta-section" style={{
         padding: '60px 40px 80px 40px',
         background: 'var(--bg-main)',
         transition: 'background 0.3s'
@@ -1538,7 +1704,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       </section>
 
       {/* Footer Section */}
-      <footer style={{
+      <footer className="footer-section" style={{
         padding: '80px 40px 40px 40px',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-color)',
@@ -1711,7 +1877,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
           padding: '20px',
           animation: 'fadeIn 0.3s ease-out'
         }}>
-          <div style={{
+          <div className="modal-card" style={{
             background: 'var(--bg-card)',
             maxWidth: '500px',
             width: '100%',
@@ -1869,6 +2035,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
       {!hasSpun && (
         <button
           onClick={() => setShowSpinWheel(true)}
+          className="floating-gift-trigger"
           style={{
             position: 'fixed',
             bottom: '24px',
@@ -1899,7 +2066,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
 
       {/* Persistent Won Discount Banner at bottom */}
       {wonDiscount && wheelTimerLeft > 0 && (
-        <div style={{
+        <div className="won-discount-banner" style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
@@ -1974,7 +2141,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
           padding: '20px',
           animation: 'fadeIn 0.3s ease-out'
         }}>
-          <div style={{
+          <div className="modal-card" style={{
             background: 'var(--bg-card)',
             maxWidth: '440px',
             width: '100%',
@@ -2021,7 +2188,7 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
             </p>
 
             {/* The Wheel Visual Container */}
-            <div style={{
+            <div className="wheel-container" style={{
               position: 'relative',
               width: '260px',
               height: '260px',

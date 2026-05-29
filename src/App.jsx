@@ -151,6 +151,11 @@ const LazyThumbnail = ({ file }) => {
 
 function App() {
   const [currentTab, setCurrentTab] = useState('dashboard')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [currentTab])
 
   // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
@@ -4876,7 +4881,7 @@ function App() {
         overflowY: 'auto'
       }}>
         <Toaster position="top-center" richColors theme={theme} />
-        <div style={{
+        <div className="auth-card" style={{
           width: '100%',
           maxWidth: '440px',
           background: 'var(--bg-card)',
@@ -5078,7 +5083,7 @@ function App() {
         overflowY: 'auto'
       }}>
         <Toaster position="top-center" richColors theme={theme} />
-        <div style={{
+        <div className="auth-card" style={{
           width: '100%',
           maxWidth: '440px',
           background: 'var(--bg-card)',
@@ -5164,6 +5169,15 @@ function App() {
     <div className="app-container">
       <Toaster position="top-center" richColors theme={theme} />
 
+      <div className="mobile-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src={icon} alt="Logo" style={{ width: '28px', height: '28px', borderRadius: '4px' }} />
+          <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>OptiSnap</span>
+        </div>
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="mobile-menu-btn">
+          {mobileMenuOpen ? '✕ Close' : '☰ Menu'}
+        </button>
+      </div>
 
       {isProcessing && (
         <div className="progress-overlay">
@@ -5189,7 +5203,7 @@ function App() {
         </div>
       )}
 
-      <div className="sidebar">
+      <div className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="logo" onClick={() => setView('landing')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }} title="Back to Landing Page">
           <img src={icon} alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '6px' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
@@ -5342,7 +5356,7 @@ function App() {
       </div>
       {/* Cart Abandonment Slide-in Toast */}
       {showAbandonToast && abandonedCheckout && abandonTimeLeft > 0 && (
-        <div style={{
+        <div className="abandon-toast" style={{
           position: 'fixed',
           bottom: '24px',
           right: '24px',
