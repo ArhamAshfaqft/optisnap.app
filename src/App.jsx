@@ -652,7 +652,7 @@ function App() {
 
     // Tier-Aware Upload Capping and Checks
     const isFreeTrial = planTier === 'free'
-    const isStarter = planTier === 'starter'
+    const isStarter = planTier === 'starter' || planTier === 'starter_lifetime'
 
     if (isFreeTrial) {
       const dailyFreeLimit = 10
@@ -908,7 +908,7 @@ function App() {
 
     // Tier-Aware Limits Check
     const isFreeTrial = planTier === 'free'
-    const isStarter = planTier === 'starter'
+    const isStarter = planTier === 'starter' || planTier === 'starter_lifetime'
 
     let processedToday = 0
     const todayStr = new Date().toDateString()
@@ -1370,12 +1370,28 @@ function App() {
       const planId = data.license?.plan_id || data.plan_id
       const planName = String(data.license_plan_name || data.plan?.name || data.license?.plan_name || '').toLowerCase()
       
-      let activatedTier = 'professional'
+      let baseTier = 'professional'
       if (Number(planId) === 50113 || planName.includes('starter')) {
-        activatedTier = 'starter'
+        baseTier = 'starter'
       } else if (Number(planId) === 50114 || planName.includes('professional') || planName.includes('pro')) {
-        activatedTier = 'professional'
+        baseTier = 'professional'
       }
+
+      // Detect if this is a lifetime (one-off) license from the Freemius response.
+      // Freemius lifetime licenses have: expiration = null, or billing_cycle = 'lifetime',
+      // or the subscription field is absent/null (one-time payments don't create subscriptions).
+      const licenseData = data.license || data
+      const expiration = licenseData.expiration
+      const billingCycle = String(licenseData.billing_cycle || data.billing_cycle || '').toLowerCase()
+      const subscriptionId = licenseData.subscription_id || data.subscription_id
+      const isLifetime = (
+        expiration === null || 
+        expiration === 'null' || 
+        billingCycle === 'lifetime' || 
+        (!subscriptionId && expiration === null)
+      )
+
+      const activatedTier = isLifetime ? `${baseTier}_lifetime` : baseTier
 
       const installId = data.install_id || data.id
 
@@ -4492,7 +4508,7 @@ function App() {
                         </strong>
                       </span>
 
-                      {(planTier === 'starter' || planTier === 'professional') && (
+                      {(planTier === 'starter' || planTier === 'starter_lifetime' || planTier === 'professional' || planTier === 'professional_lifetime') && (
                         <button
                           className="btn-secondary"
                           onClick={handleDeactivateFreemiusLicense}
@@ -4582,7 +4598,7 @@ function App() {
                       </div>
                     )}
 
-                    {planTier === 'starter' && (
+                    {(planTier === 'starter' || planTier === 'starter_lifetime') && (
                       <div style={{
                         marginTop: '10px',
                         padding: '16px',
