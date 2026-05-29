@@ -1337,6 +1337,7 @@ function App() {
 
   // Freemius License activation handler
   const [freemiusLicense, setFreemiusLicense] = useState('')
+  const [freemiusDebugInfo, setFreemiusDebugInfo] = useState('')
   const handleActivateFreemiusLicense = async () => {
     if (!freemiusLicense) return toast.error("Please enter your Freemius license key.")
 
@@ -1381,18 +1382,25 @@ function App() {
 
       // Fetch detailed license object to check for lifetime cycle.
       // Since Freemius activation POST response returns an Install object rather than the full License details,
-      // we query the public installs license endpoint to retrieve billing information.
+      // we query the public installs license endpoint to retrieve billing information, passing the install bearer token.
       const installId = data.install_id || data.id
       let isLifetime = false
+      let detailDataForDebug = null
 
       if (installId) {
         try {
           const detailResponse = await fetch(
-            `https://api.freemius.com/v1/products/30510/installs/${installId}/license.json?uid=${deviceUid}&license_key=${freemiusLicense.trim()}`
+            `https://api.freemius.com/v1/products/30510/installs/${installId}/license.json?uid=${deviceUid}&license_key=${freemiusLicense.trim()}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${data.install_api_token || data.token}`
+              }
+            }
           )
           if (detailResponse.ok) {
             const licenseData = await detailResponse.json()
             console.log('Freemius license detail data:', licenseData)
+            detailDataForDebug = licenseData
             const expiration = licenseData.expiration
             const pricingId = licenseData.pricing_id || licenseData.fs_pricing_id
             
@@ -1403,14 +1411,24 @@ function App() {
               expiration === 'null' || 
               Number(pricingId) === 65014
             )
+          } else {
+            console.warn("Freemius license detail responded with error status:", detailResponse.status)
+            detailDataForDebug = { 
+              status: detailResponse.status, 
+              statusText: detailResponse.statusText,
+              message: "Failed to load detailed license. Check token auth or network."
+            }
           }
         } catch (detailErr) {
           console.warn("Failed to fetch Freemius license details, falling back:", detailErr)
+          detailDataForDebug = { error: detailErr.message }
         }
       }
 
       // Fallback check on activation data if GET request fails/skipped
+      let fallbackCheckUsed = false
       if (!isLifetime) {
+        fallbackCheckUsed = true
         const licenseData = data.license || data
         const expiration = licenseData.expiration
         const billingCycle = String(licenseData.billing_cycle || data.billing_cycle || '').toLowerCase()
@@ -1424,6 +1442,16 @@ function App() {
       }
 
       const activatedTier = isLifetime ? `${baseTier}_lifetime` : baseTier
+
+      // Set debug info for UI diagnostics
+      setFreemiusDebugInfo(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        activationResponse: data,
+        licenseDetailResponse: detailDataForDebug,
+        fallbackCheckUsed,
+        isLifetimeCalculated: isLifetime,
+        activatedTier
+      }, null, 2))
 
       // Save activation state to Supabase profiles
       let profileError = null
@@ -4662,6 +4690,24 @@ function App() {
                       </div>
                     )}
                   </div>
+
+                  {freemiusDebugInfo && (
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '16px',
+                      background: 'rgba(139, 92, 246, 0.05)',
+                      border: '1px solid rgba(139, 92, 246, 0.15)',
+                      borderRadius: '8px',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all'
+                    }}>
+                      <h5 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '12px' }}>Freemius Activation Debug Log</h5>
+                      {freemiusDebugInfo}
+                    </div>
+                  )}
 
                   <div style={{ margin: '24px 0' }}></div>
 
