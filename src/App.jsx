@@ -1437,6 +1437,12 @@ function App() {
 
       const activatedTier = isLifetime ? `${baseTier}_lifetime` : baseTier
 
+      // Save locally to localStorage as a fallback for deactivation
+      if (freemiusLicense && installId) {
+        localStorage.setItem('freemius_license_key', freemiusLicense.trim())
+        localStorage.setItem('freemius_install_id', String(installId))
+      }
+
       // Save activation state to Supabase profiles
       let profileError = null
       try {
@@ -1499,8 +1505,8 @@ function App() {
       if (!user) throw new Error("You must be logged in to deactivate a license.")
 
       // Fetch the stored license key and install ID
-      let licenseKey = user.user_metadata?.active_license_key
-      let installId = user.user_metadata?.freemius_install_id
+      let licenseKey = user.user_metadata?.active_license_key || localStorage.getItem('freemius_license_key')
+      let installId = user.user_metadata?.freemius_install_id || localStorage.getItem('freemius_install_id')
 
       if (!licenseKey || !installId) {
         // Fallback: Fetch the stored license key and install id from profiles if they exist
@@ -1520,6 +1526,10 @@ function App() {
           console.warn("Could not read from profiles table (columns may not exist):", fetchError)
         }
       }
+
+      // Final fallback to localStorage if profiles fetch didn't return them
+      if (!licenseKey) licenseKey = localStorage.getItem('freemius_license_key')
+      if (!installId) installId = localStorage.getItem('freemius_install_id')
 
       if (!licenseKey) {
         throw new Error("No active Freemius license key found for this account. If you redeemed via AppSumo, please contact support to release a code.")
@@ -1546,6 +1556,10 @@ function App() {
       if (!response.ok) {
         throw new Error(data.error?.message || "Deactivation failed on Freemius servers.")
       }
+
+      // Clear local storage fallbacks
+      localStorage.removeItem('freemius_license_key')
+      localStorage.removeItem('freemius_install_id')
 
       // Revert user profile database details back to free
       let profileError = null
