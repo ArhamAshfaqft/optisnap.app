@@ -1353,11 +1353,11 @@ export default function LandingPage({ onLaunchApp, session, theme, toggleTheme }
                 <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Your Monthly Return (ROI)
                 </span>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px' }}>
-                  <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--primary)' }}>
-                    {Math.round(((weeklyImages * 3.5) / 60) * 4)} hours saved
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'nowrap', gap: '8px' }}>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                    {Math.round(((weeklyImages * 3.5) / 60) * 4)} hrs saved
                   </span>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#22c55e' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: '#22c55e', whiteSpace: 'nowrap' }}>
                     Save ${Math.round(((weeklyImages * 3.5) / 60) * 4 * 25)}/mo
                   </span>
                 </div>
