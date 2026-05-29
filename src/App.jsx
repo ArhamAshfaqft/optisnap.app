@@ -35,9 +35,9 @@ import {
   ShieldAlert,
   Key,
   Search,
-  RefreshCw,
   EyeOff,
-  Layers
+  Layers,
+  ShoppingBag
 } from 'lucide-react'
 import './assets/main.css'
 
