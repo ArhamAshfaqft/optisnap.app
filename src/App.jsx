@@ -37,7 +37,8 @@ import {
   Search,
   EyeOff,
   Layers,
-  ShoppingBag
+  ShoppingBag,
+  RefreshCw
 } from 'lucide-react'
 import './assets/main.css'
 
