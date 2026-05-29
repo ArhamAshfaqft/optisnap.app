@@ -1345,6 +1345,8 @@ function App() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("You must be logged in to activate a license.")
 
+      const deviceUid = user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32).padEnd(32, '0')
+
       // Call Freemius public activation API
       const response = await fetch(`https://api.freemius.com/v1/products/30510/licenses/activate.json`, {
         method: 'POST',
@@ -1353,7 +1355,7 @@ function App() {
         },
         body: JSON.stringify({
           license_key: freemiusLicense.trim(),
-          uid: user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 32).padEnd(32, '0'), // 32-char alphanumeric device UID
+          uid: deviceUid,
           title: `Web Application Client (${user.email})`
         })
       })
@@ -1377,23 +1379,51 @@ function App() {
         baseTier = 'professional'
       }
 
-      // Detect if this is a lifetime (one-off) license from the Freemius response.
-      // Freemius lifetime licenses have: expiration = null, or billing_cycle = 'lifetime',
-      // or the subscription field is absent/null (one-time payments don't create subscriptions).
-      const licenseData = data.license || data
-      const expiration = licenseData.expiration
-      const billingCycle = String(licenseData.billing_cycle || data.billing_cycle || '').toLowerCase()
-      const subscriptionId = licenseData.subscription_id || data.subscription_id
-      const isLifetime = (
-        expiration === null || 
-        expiration === 'null' || 
-        billingCycle === 'lifetime' || 
-        (!subscriptionId && expiration === null)
-      )
+      // Fetch detailed license object to check for lifetime cycle.
+      // Since Freemius activation POST response returns an Install object rather than the full License details,
+      // we query the public installs license endpoint to retrieve billing information.
+      const installId = data.install_id || data.id
+      let isLifetime = false
+
+      if (installId) {
+        try {
+          const detailResponse = await fetch(
+            `https://api.freemius.com/v1/products/30510/installs/${installId}/license.json?uid=${deviceUid}&license_key=${freemiusLicense.trim()}`
+          )
+          if (detailResponse.ok) {
+            const licenseData = await detailResponse.json()
+            console.log('Freemius license detail data:', licenseData)
+            const expiration = licenseData.expiration
+            const pricingId = licenseData.pricing_id || licenseData.fs_pricing_id
+            
+            // In Freemius, a null expiration indicates a lifetime license.
+            // Also check pricing ID if it matches the Starter lifetime pricing ID (65014).
+            isLifetime = (
+              expiration === null || 
+              expiration === 'null' || 
+              Number(pricingId) === 65014
+            )
+          }
+        } catch (detailErr) {
+          console.warn("Failed to fetch Freemius license details, falling back:", detailErr)
+        }
+      }
+
+      // Fallback check on activation data if GET request fails/skipped
+      if (!isLifetime) {
+        const licenseData = data.license || data
+        const expiration = licenseData.expiration
+        const billingCycle = String(licenseData.billing_cycle || data.billing_cycle || '').toLowerCase()
+        const subscriptionId = licenseData.subscription_id || data.subscription_id
+        isLifetime = (
+          expiration === null || 
+          expiration === 'null' || 
+          billingCycle === 'lifetime' || 
+          (!subscriptionId && expiration === null)
+        )
+      }
 
       const activatedTier = isLifetime ? `${baseTier}_lifetime` : baseTier
-
-      const installId = data.install_id || data.id
 
       // Save activation state to Supabase profiles
       let profileError = null
