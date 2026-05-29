@@ -1380,9 +1380,8 @@ function App() {
         baseTier = 'professional'
       }
 
-      // Fetch detailed license object to check for lifetime cycle.
-      // Since Freemius activation POST response returns an Install object rather than the full License details,
-      // we query the public installs license endpoint to retrieve billing information, passing the install bearer token.
+      // Fetch detailed install object to check for lifetime cycle.
+      // We query the installs endpoint using the install bearer token to retrieve subscription info.
       const installId = data.install_id || data.id
       let isLifetime = false
       let detailDataForDebug = null
@@ -1390,7 +1389,7 @@ function App() {
       if (installId) {
         try {
           const detailResponse = await fetch(
-            `https://api.freemius.com/v1/products/30510/installs/${installId}/license.json?uid=${deviceUid}&license_key=${freemiusLicense.trim()}`,
+            `https://api.freemius.com/v1/installs/${installId}.json`,
             {
               headers: {
                 'Authorization': `Bearer ${data.install_api_token || data.token}`
@@ -1398,29 +1397,25 @@ function App() {
             }
           )
           if (detailResponse.ok) {
-            const licenseData = await detailResponse.json()
-            console.log('Freemius license detail data:', licenseData)
-            detailDataForDebug = licenseData
-            const expiration = licenseData.expiration
-            const pricingId = licenseData.pricing_id || licenseData.fs_pricing_id
+            const installData = await detailResponse.json()
+            console.log('Freemius install detail data:', installData)
+            detailDataForDebug = installData
             
-            // In Freemius, a null expiration indicates a lifetime license.
-            // Also check pricing ID if it matches the Starter lifetime pricing ID (65014).
-            isLifetime = (
-              expiration === null || 
-              expiration === 'null' || 
-              Number(pricingId) === 65014
-            )
+            // For one-off (lifetime) licenses, subscription_id is null.
+            // For recurring subscriptions, subscription_id is an integer/string ID.
+            if (installData.subscription_id === null || installData.subscription_id === undefined) {
+              isLifetime = true
+            }
           } else {
-            console.warn("Freemius license detail responded with error status:", detailResponse.status)
+            console.warn("Freemius install detail responded with error status:", detailResponse.status)
             detailDataForDebug = { 
               status: detailResponse.status, 
               statusText: detailResponse.statusText,
-              message: "Failed to load detailed license. Check token auth or network."
+              message: "Failed to load detailed install info. Check token auth or network."
             }
           }
         } catch (detailErr) {
-          console.warn("Failed to fetch Freemius license details, falling back:", detailErr)
+          console.warn("Failed to fetch Freemius install details, falling back:", detailErr)
           detailDataForDebug = { error: detailErr.message }
         }
       }
