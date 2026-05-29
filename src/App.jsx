@@ -1337,7 +1337,6 @@ function App() {
 
   // Freemius License activation handler
   const [freemiusLicense, setFreemiusLicense] = useState('')
-  const [freemiusDebugInfo, setFreemiusDebugInfo] = useState('')
   const handleActivateFreemiusLicense = async () => {
     if (!freemiusLicense) return toast.error("Please enter your Freemius license key.")
 
@@ -1437,16 +1436,6 @@ function App() {
       }
 
       const activatedTier = isLifetime ? `${baseTier}_lifetime` : baseTier
-
-      // Set debug info for UI diagnostics
-      setFreemiusDebugInfo(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        activationResponse: data,
-        licenseDetailResponse: detailDataForDebug,
-        fallbackCheckUsed,
-        isLifetimeCalculated: isLifetime,
-        activatedTier
-      }, null, 2))
 
       // Save activation state to Supabase profiles
       let profileError = null
@@ -4685,24 +4674,6 @@ function App() {
                       </div>
                     )}
                   </div>
-
-                  {freemiusDebugInfo && (
-                    <div style={{
-                      marginTop: '20px',
-                      padding: '16px',
-                      background: 'rgba(139, 92, 246, 0.05)',
-                      border: '1px solid rgba(139, 92, 246, 0.15)',
-                      borderRadius: '8px',
-                      fontFamily: 'monospace',
-                      fontSize: '11px',
-                      color: 'var(--text-secondary)',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all'
-                    }}>
-                      <h5 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '12px' }}>Freemius Activation Debug Log</h5>
-                      {freemiusDebugInfo}
-                    </div>
-                  )}
 
                   <div style={{ margin: '24px 0' }}></div>
 
